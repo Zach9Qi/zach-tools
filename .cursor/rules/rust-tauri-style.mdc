@@ -1,0 +1,50 @@
+---
+description: Rust + Tauri 2 后端编码风格与实践
+globs: src-tauri/**/*.rs
+alwaysApply: false
+---
+
+# 后端编码风格与实践（Rust + Tauri 2）
+
+## 通用 Rust 风格
+- rustfmt 默认格式；改动后保证 `cargo fmt` 与 `cargo clippy` 无警告
+- 命名：函数/变量 `snake_case`，类型/trait `PascalCase`，常量 `SCREAMING_SNAKE_CASE`
+- 用 let-else / 早返回减少嵌套；明确可忽略的 `Result` 用 `let _ =` 显式丢弃（如窗口 show/hide）；业务代码禁止 `unwrap()`（入口 `expect` 与测试除外）
+
+## 模块组织（随功能增长按此拆分，不要都堆在 lib.rs）
+- `main.rs` 只做入口；`lib.rs` 只做 Builder 装配（plugin、manage、handler 注册、setup）
+- `commands/` 按领域一个文件（如 `commands/launcher.rs`）；命令函数保持薄：取参 → 调服务 → 返回
+- 业务逻辑写成不依赖 tauri 类型的普通函数/模块（如 `services/`），便于单元测试
+- `error.rs` 放统一错误类型，`state.rs` 放共享状态定义
+
+## 错误处理
+- 可失败命令统一返回 `Result<T, AppError>`；用 thiserror 定义错误并实现 `Serialize`（首次使用时在 Cargo.toml 加 thiserror）：
+
+```rust
+#[derive(Debug, thiserror::Error)]
+pub enum AppError {
+    #[error("io 错误: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+impl serde::Serialize for AppError {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&self.to_string())
+    }
+}
+```
+
+- 内部一律用 `?` 传播；错误消息面向前端展示，写成用户可读的文案
+
+## 状态与并发
+- 共享状态定义成结构体，经 `.manage(AppState::default())` 注册，命令里用 `state: tauri::State<'_, AppState>` 注入，不用全局 static
+- 可变字段用 `Mutex`/`RwLock` 包内层字段而非整个结构体，缩小锁粒度；锁不要跨 `await` 持有
+- 含 IO / 耗时操作的命令声明为 `async fn`，避免阻塞主线程；同步阻塞任务放 `tauri::async_runtime::spawn_blocking`
+
+## Tauri 约定
+- 命令：`#[tauri::command]` + snake_case 命名，全部在 `tauri::generate_handler![]` 中注册
+- 方向约定：前端主动调后端用 command；后端通知前端用 `app.emit`，事件名 kebab-case（如 `launcher-open`），两者不混用
+- 跨端传输的结构体统一 `#[derive(Serialize, Deserialize)]` + `#[serde(rename_all = "camelCase")]`，前端侧字段保持 camelCase
+- 平台差异代码用 `#[cfg(desktop)]` / `#[cfg(mobile)]` 隔离
+- 引入新 plugin 或系统能力时，同步在 `capabilities/` 里声明权限，遵循最小权限原则
+- 日志用 `log` 宏 + tauri-plugin-log 输出，不用 `println!` 调试

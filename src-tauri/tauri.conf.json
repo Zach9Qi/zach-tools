@@ -1,0 +1,79 @@
+{
+  // JSON Schema，供编辑器做补全与校验
+  "$schema": "https://schema.tauri.app/config/2",
+  // 应用显示名称（安装包、窗口等会用到）
+  "productName": "zach-tools",
+  // 应用版本号
+  "version": "0.1.0",
+  // 应用唯一标识（反向域名风格，打包/系统注册用）
+  "identifier": "com.chenziqi.zach-tools",
+  // 前后端构建相关配置
+  "build": {
+    // 开发模式启动前执行的命令（启动前端 dev server）
+    "beforeDevCommand": "bun run dev",
+    // 开发模式下加载的前端地址
+    "devUrl": "http://localhost:1420",
+    // 正式打包前执行的命令（构建前端产物）
+    "beforeBuildCommand": "bun run build",
+    // 打包时嵌入的前端静态资源目录
+    "frontendDist": "../dist"
+  },
+  // 应用运行时配置
+  "app": {
+    // 窗口列表
+    "windows": [
+      {
+        // 窗口标识，代码里用这个名字查找窗口
+        "label": "main",
+        // 窗口标题
+        "title": "zach-tools",
+        // 初始宽度（逻辑像素；含面板四周留给 CSS 阴影渲染的透明边距）
+        "width": 760,
+        // 初始高度（逻辑像素；含阴影边距，需放下搜索框 + 二组分区 + 磁贴两行文字）
+        "height": 488,
+        // 最小宽度
+        "minWidth": 640,
+        // 最小高度
+        "minHeight": 488,
+        // 启动时是否居中显示
+        "center": true,
+        // 启动时是否可见（false 表示先隐藏，再由程序 show）
+        "visible": false,
+        // 启动时是否抢占焦点
+        "focus": false,
+        // 是否显示系统标题栏/边框（false = 无边框）
+        "decorations": false,
+        // 窗口背景是否透明（配合 CSS 透明可透出桌面）
+        "transparent": true,
+        // 是否始终置顶
+        "alwaysOnTop": true,
+        // 是否不在任务栏显示
+        "skipTaskbar": true,
+        // 是否允许用户拖拽调整大小
+        "resizable": false,
+        // 是否显示系统窗口阴影
+        "shadow": false
+      }
+    ],
+    // 安全相关配置
+    "security": {
+      // Content Security Policy；null 表示不启用（开发方便，生产建议收紧）
+      "csp": null
+    }
+  },
+  // 安装包/分发相关配置
+  "bundle": {
+    // 是否启用打包
+    "active": true,
+    // 打包目标平台；"all" 表示当前支持的全部目标
+    "targets": "all",
+    // 应用图标路径列表
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  /*
+   * 语义色板：light-dark() 跟随系统深浅色自动切换，
+   * 组件直接写 bg-surface / text-muted 等，无需成对维护 dark: 变体。
+   * 生效前提：使用处的祖先元素已设置 color-scheme（面板根上的 scheme-light-dark）。
+   */
+  /* 面板底色 */
+  --color-surface: light-dark(#ffffff, #18181b);
+  /* 图标底、键帽底等次级底色 */
+  --color-surface-muted: light-dark(#f4f4f5, #27272a);
+  /* 主文字（搜索输入） */
+  --color-content: light-dark(#27272a, #f4f4f5);
+  /* 次级文字（空态标题） */
+  --color-content-secondary: light-dark(#52525b, #d4d4d8);
+  /* 弱化文字与图标（提示、占位符、空态图标） */
+  --color-muted: light-dark(#a1a1aa, #71717a);
+  /* 键帽等小字号场景的弱化文字，比 muted 对比度略高 */
+  --color-muted-strong: light-dark(#71717a, #a1a1aa);
+  /* 分区分隔线 */
+  --color-line: light-dark(rgb(228 228 231 / 0.7), #27272a);
+  /* 键帽描边等更实的线条 */
+  --color-line-strong: light-dark(rgb(212 212 216 / 0.8), #3f3f46);
+  /* 面板外描边 */
+  --color-edge: light-dark(rgb(9 9 11 / 0.1), rgb(255 255 255 / 0.1));
+
+  /* 键帽字号（10px，行高 1） */
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 1;
+
+  /* 面板投影：延伸控制在窗口 20px 透明边距内，避免被窗口边缘生硬截断 */
+  --shadow-panel: 0 12px 32px -8px rgb(0 0 0 / 0.35);
+}
