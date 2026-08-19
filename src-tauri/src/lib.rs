@@ -41,8 +41,17 @@ pub fn run() {
             commands::clipboard::copy_clipboard_item,
             commands::clipboard::delete_clipboard_item,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("启动应用失败")
+        .run(|app, event| {
+            // 优雅退出：进程结束前显式关闭连接池，等在途写入完成并 checkpoint WAL。
+            // 监听线程与全局快捷键无需处理，进程退出时由系统自动回收。
+            if let tauri::RunEvent::Exit = event {
+                let state = app.state::<AppState>();
+                tauri::async_runtime::block_on(state.db().close());
+                log::info!("数据库连接池已关闭，应用退出");
+            }
+        });
 }
 
 /// 桌面端专属装配：全局快捷键唤起与失焦自动收起。
@@ -67,10 +76,13 @@ fn setup_desktop(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         let handle = app.handle().clone();
         window.on_window_event(move |event| {
             if matches!(event, tauri::WindowEvent::Focused(false)) {
-                services::launcher_window::hide(&handle);
+                services::launcher_window::hide_on_blur(&handle);
             }
         });
     }
+
+    // 系统托盘：常驻后台的可见入口，提供开合与退出
+    services::tray::setup(app.handle())?;
 
     // 启动即隐藏，进程常驻后台等待快捷键唤起
     services::launcher_window::init_hidden(app.handle());

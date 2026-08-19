@@ -22,11 +22,11 @@ export default defineConfig(async () => ({
     },
   },
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
+  // 以下选项专为 Tauri 开发准备，仅在 `tauri dev` / `tauri build` 时生效
   //
-  // 1. prevent Vite from obscuring rust errors
+  // 1. 关闭清屏，避免盖住 Rust 编译错误
   clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
+  // 2. Tauri 需要固定端口，被占用时直接失败
   server: {
     port: 1420,
     strictPort: true,
@@ -39,7 +39,7 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
+      // 3. 不要监听 src-tauri，后端由 cargo 自己编译
       ignored: ["**/src-tauri/**"],
     },
   },

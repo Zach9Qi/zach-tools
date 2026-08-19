@@ -17,7 +17,7 @@ pub enum AppError {
     #[error("暂不支持对该类型条目执行此操作")]
     UnsupportedKind,
 
-    #[error("io 错误: {0}")]
+    #[error("输入输出错误: {0}")]
     Io(#[from] std::io::Error),
 
     #[error("系统错误: {0}")]

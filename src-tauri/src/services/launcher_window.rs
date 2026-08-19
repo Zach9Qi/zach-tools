@@ -3,6 +3,7 @@
 use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewWindow};
 
 use crate::platform;
+use crate::services::tray;
 use crate::state::AppState;
 
 /// 主窗口 label（与 tauri.conf.json 保持一致）
@@ -49,6 +50,59 @@ pub fn toggle<R: Runtime>(app: &AppHandle<R>) {
     } else {
         show(app);
     }
+}
+
+/// 失焦自动收起。鼠标正悬于本应用托盘图标时跳过：
+/// 该失焦由托盘按下引起，窗口保持原状，开合决策交给随后到达的托盘点击事件，
+/// 这样点击事件看到的是窗口的真实可见状态，无需事后猜测失焦原因。
+pub fn hide_on_blur<R: Runtime>(app: &AppHandle<R>) {
+    if cursor_on_tray(app) {
+        return;
+    }
+    hide(app);
+}
+
+/// 托盘左键点击的开合切换。
+///
+/// 托盘引发的失焦不会收起窗口（见 [`hide_on_blur`]），因此此处的可见性
+/// 是点击前的真实状态：开着就收起，关着就唤起。
+pub fn toggle_from_tray<R: Runtime>(app: &AppHandle<R>) {
+    let Some(window) = main_window(app) else {
+        return;
+    };
+    if window.is_visible().unwrap_or(false) {
+        hide(app);
+    } else {
+        show(app);
+    }
+}
+
+/// 当前鼠标是否悬于本应用的托盘图标上。任一信息拿不到时按「不在」处理，
+/// 退化为普通失焦收起。
+fn cursor_on_tray<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let Some(tray) = app.tray_by_id(tray::TRAY_ID) else {
+        return false;
+    };
+    let Ok(Some(rect)) = tray.rect() else {
+        return false;
+    };
+    let Ok(cursor) = app.cursor_position() else {
+        return false;
+    };
+    rect_contains(&rect, cursor.x, cursor.y)
+}
+
+/// 判断屏幕坐标是否落在矩形内（托盘 rect 与鼠标位置均为物理像素坐标）
+fn rect_contains(rect: &tauri::Rect, x: f64, y: f64) -> bool {
+    let (left, top) = match rect.position {
+        tauri::Position::Physical(p) => (f64::from(p.x), f64::from(p.y)),
+        tauri::Position::Logical(p) => (p.x, p.y),
+    };
+    let (width, height) = match rect.size {
+        tauri::Size::Physical(s) => (f64::from(s.width), f64::from(s.height)),
+        tauri::Size::Logical(s) => (s.width, s.height),
+    };
+    x >= left && x < left + width && y >= top && y < top + height
 }
 
 /// 应用启动时的初始收纳：只隐藏窗口，不广播事件（此时前端尚未加载）。
