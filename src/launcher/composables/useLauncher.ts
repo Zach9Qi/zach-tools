@@ -1,6 +1,6 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { hideLauncher, onLauncherClose, onLauncherOpen } from "@/lib/launcher";
+import { hideLauncher, onLauncherClose, onLauncherOpen } from "@/launcher/lib/window";
 
 /** useLauncher 可选配置 */
 export interface UseLauncherOptions {

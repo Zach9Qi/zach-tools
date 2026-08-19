@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import IconSearch from "~icons/lucide/search";
-import KeyboardKey from "@/components/launcher/KeyboardKey.vue";
+import KeyboardKey from "@/launcher/components/KeyboardKey.vue";
 
 const query = defineModel<string>({ required: true });
 

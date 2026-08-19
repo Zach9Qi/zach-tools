@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import KeyboardKey from "@/components/launcher/KeyboardKey.vue";
+import KeyboardKey from "@/launcher/components/KeyboardKey.vue";
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import LauncherPanel from "@/components/launcher/LauncherPanel.vue";
+import LauncherPanel from "@/launcher/components/LauncherPanel.vue";
 </script>
 
 <template>

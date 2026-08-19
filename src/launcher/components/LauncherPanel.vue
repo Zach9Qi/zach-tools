@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useTemplateRef } from "vue";
-import LauncherFooter from "@/components/launcher/LauncherFooter.vue";
-import ResultsPanel from "@/components/launcher/ResultsPanel.vue";
-import SearchBar from "@/components/launcher/SearchBar.vue";
-import { useLauncher } from "@/composables/useLauncher";
+import LauncherFooter from "@/launcher/components/LauncherFooter.vue";
+import ResultsPanel from "@/launcher/components/ResultsPanel.vue";
+import SearchBar from "@/launcher/components/SearchBar.vue";
+import { useLauncher } from "@/launcher/composables/useLauncher";
 
 const searchBar = useTemplateRef<InstanceType<typeof SearchBar>>("searchBar");
 
