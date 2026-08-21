@@ -1,6 +1,6 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { hideLauncher, onLauncherClose, onLauncherOpen } from "@/launcher/lib/window";
+import { hideLauncher, onLauncherOpen } from "@/launcher/lib/window";
 
 /** useLauncher 可选配置 */
 export interface UseLauncherOptions {
@@ -10,7 +10,8 @@ export interface UseLauncherOptions {
 
 /**
  * 启动器窗口级状态编排：
- * 维护搜索词、响应后端 launcher-open / launcher-close 事件、处理 Esc 收起。
+ * 维护搜索词、响应后端 launcher-open 事件、处理 Esc 收起。
+ * 收起只是隐藏窗口，搜索词等状态保留，下次唤起接着上次的样子。
  */
 export function useLauncher(options: UseLauncherOptions = {}) {
   /** 当前搜索词 */
@@ -33,12 +34,9 @@ export function useLauncher(options: UseLauncherOptions = {}) {
   onMounted(async () => {
     window.addEventListener("keydown", handleKeydown);
     unlisteners = await Promise.all([
+      // 唤起时不清 query：保留上次搜索词，SearchBar 聚焦时全选，输入即覆盖
       onLauncherOpen(() => {
-        query.value = "";
         options.onOpen?.();
-      }),
-      onLauncherClose(() => {
-        query.value = "";
       }),
     ]);
   });

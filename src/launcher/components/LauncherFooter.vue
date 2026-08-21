@@ -8,6 +8,8 @@ import KeyboardKey from "@/launcher/components/KeyboardKey.vue";
       <span class="flex items-center gap-1">
         <KeyboardKey>↑</KeyboardKey>
         <KeyboardKey>↓</KeyboardKey>
+        <KeyboardKey>←</KeyboardKey>
+        <KeyboardKey>→</KeyboardKey>
         选择
       </span>
       <span class="flex items-center gap-1">

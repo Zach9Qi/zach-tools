@@ -7,9 +7,10 @@ const query = defineModel<string>({ required: true });
 
 const inputRef = ref<HTMLInputElement | null>(null);
 
-/** 聚焦搜索框，供父组件在窗口唤起后调用 */
+/** 聚焦搜索框并全选上次搜索词：窗口唤起后直接输入即覆盖，无需手动清空 */
 function focus() {
   inputRef.value?.focus();
+  inputRef.value?.select();
 }
 
 defineExpose({ focus });
