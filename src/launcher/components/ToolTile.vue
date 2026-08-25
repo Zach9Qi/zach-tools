@@ -1,19 +1,13 @@
 <script setup lang="ts">
-import { computed, type Component } from "vue";
-import IconClipboard from "~icons/lucide/clipboard";
-import IconPuzzle from "~icons/lucide/puzzle";
+import { computed } from "vue";
+import { iconOf } from "@/tools/icons";
 import type { ToolItem } from "@/tools/types";
 
 const props = defineProps<{ item: ToolItem; selected?: boolean }>();
 
 const emit = defineEmits<{ activate: []; select: [] }>();
 
-/** 目录里的 icon 字符串 → lucide 组件;新工具图标在这里登记,未登记的走拼图占位 */
-const icons: Record<string, Component> = {
-  clipboard: IconClipboard,
-};
-
-const icon = computed(() => icons[props.item.icon] ?? IconPuzzle);
+const icon = computed(() => iconOf(props.item.icon));
 </script>
 
 <template>

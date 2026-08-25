@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import ToolTile from "@/launcher/components/ToolTile.vue";
 import type { SectionEntry } from "@/launcher/composables/useResults";
-import type { ToolItem } from "@/tools/types";
 
 defineProps<{
   /** 分区标题(最近使用 / 已固定 / 匹配结果 / 搜索结果) */
@@ -12,7 +11,7 @@ defineProps<{
   selectedIndex?: number;
 }>();
 
-const emit = defineEmits<{ activate: [tool: ToolItem]; select: [index: number] }>();
+const emit = defineEmits<{ activate: [entry: SectionEntry]; select: [index: number] }>();
 </script>
 
 <template>
@@ -28,7 +27,7 @@ const emit = defineEmits<{ activate: [tool: ToolItem]; select: [index: number] }
         :key="entry.tool.id"
         :item="entry.tool"
         :selected="entry.index === selectedIndex"
-        @activate="emit('activate', entry.tool)"
+        @activate="emit('activate', entry)"
         @select="emit('select', entry.index)"
       />
     </div>

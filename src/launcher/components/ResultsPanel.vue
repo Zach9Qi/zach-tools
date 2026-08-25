@@ -3,26 +3,23 @@ import { toRef } from "vue";
 import IconChevronRight from "~icons/lucide/chevron-right";
 import IconSearchX from "~icons/lucide/search-x";
 import ToolSection from "@/launcher/components/ToolSection.vue";
-import { useResults } from "@/launcher/composables/useResults";
+import { useResults, type SectionKey } from "@/launcher/composables/useResults";
 import type { ToolItem } from "@/tools/types";
 
 const props = defineProps<{ query: string }>();
 
-const emit = defineEmits<{ activate: [tool: ToolItem] }>();
+const emit = defineEmits<{ activate: [tool: ToolItem, source: SectionKey] }>();
 
 const { isSearch, sections, selectedIndex, select } = useResults({
   query: toRef(props, "query"),
-  onActivate: (tool) => emit("activate", tool),
+  onActivate: (tool, source) => emit("activate", tool, source),
 });
 </script>
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col border-y border-line p-4">
     <!-- 搜索态全部分区为空才提示无结果;剪贴板列表接入前只看磁贴分区 -->
-    <div
-      v-if="isSearch && sections.length === 0"
-      class="flex flex-col items-center gap-3 py-10"
-    >
+    <div v-if="isSearch && sections.length === 0" class="flex flex-col items-center gap-3 py-10">
       <div class="flex size-12 items-center justify-center rounded-2xl bg-surface-muted">
         <IconSearchX class="size-5 text-muted" />
       </div>
@@ -38,7 +35,7 @@ const { isSearch, sections, selectedIndex, select } = useResults({
         :title="section.title"
         :entries="section.entries"
         :selected-index="selectedIndex"
-        @activate="emit('activate', $event)"
+        @activate="emit('activate', $event.tool, $event.section)"
         @select="select"
       >
         <!-- 已固定分区特有的「全部 >」;第一版只占位,不跳转 -->

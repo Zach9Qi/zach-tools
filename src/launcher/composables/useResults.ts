@@ -3,18 +3,26 @@ import { useRowNavigation } from "@/launcher/composables/useRowNavigation";
 import { catalog } from "@/tools/registry";
 import type { HomeResults, ToolItem } from "@/tools/types";
 
+/** 结果分区标识 */
+export type SectionKey = "recent" | "pinned" | "matches" | "named";
+
 /** useResults 配置 */
 export interface UseResultsOptions {
   /** 当前搜索词(来自外壳 useLauncher) */
   query: Ref<string>;
-  /** 回车 / 点击磁贴时回调,由调用方决定 view / launch 怎么走 */
-  onActivate: (tool: ToolItem) => void;
+  /**
+   * 回车 / 点击磁贴时回调。source 为条目所在分区:
+   * matches 表示输入是工具入参(view 型进入时带参),其余分区进入时清空搜索词。
+   */
+  onActivate: (tool: ToolItem, source: SectionKey) => void;
 }
 
-/** 结果区磁贴分区里的一个条目:工具 + 它在展平顺序中的全局下标 */
+/** 结果区磁贴分区里的一个条目:工具 + 所在分区 + 展平顺序中的全局下标 */
 export interface SectionEntry {
   /** 目录项 */
   tool: ToolItem;
+  /** 所在分区,激活时随条目回传(决定 view 型进入是否带参) */
+  section: SectionKey;
   /** 展平后的全局下标,sections 派生时盖章;组件只做相等比较,不做坐标换算 */
   index: number;
 }
@@ -22,7 +30,7 @@ export interface SectionEntry {
 /** 结果区的一个磁贴分区;模板渲染与导航展平共用这份描述,顺序与下标不会错位 */
 export interface ResultSection {
   /** 分区标识,模板 key 与分区特有 UI(如已固定的「全部」)按它分支 */
-  key: "recent" | "pinned" | "matches" | "named";
+  key: SectionKey;
   /** 分区标题 */
   title: string;
   /** 本区条目(含全局下标) */
@@ -42,8 +50,8 @@ const home: HomeResults = {
 };
 
 /** 按一行容量切成屏幕行,↑↓ 按这些行跳 */
-function chunkRows(items: ToolItem[]): ToolItem[][] {
-  const rows: ToolItem[][] = [];
+function chunkRows<T>(items: T[]): T[][] {
+  const rows: T[][] = [];
   for (let i = 0; i < items.length; i += ROW_CAPACITY) {
     rows.push(items.slice(i, i + ROW_CAPACITY));
   }
@@ -51,11 +59,10 @@ function chunkRows(items: ToolItem[]): ToolItem[][] {
 }
 
 interface SectionDef {
-  key: ResultSection["key"];
+  key: SectionKey;
   title: string;
   items: ToolItem[];
 }
-
 
 function stampSections(defs: SectionDef[]): ResultSection[] {
   let offset = 0;
@@ -68,7 +75,7 @@ function stampSections(defs: SectionDef[]): ResultSection[] {
       return {
         key: def.key,
         title: def.title,
-        entries: def.items.map((tool, i) => ({ tool, index: start + i })),
+        entries: def.items.map((tool, i) => ({ tool, section: def.key, index: start + i })),
       };
     });
 }
@@ -82,10 +89,10 @@ export function useResults({ query, onActivate }: UseResultsOptions) {
   /** query 非空即搜索态,与 ResultsPanel 的两套编排一一对应 */
   const isSearch = computed(() => query.value !== "");
 
-  /** 匹配结果:当前输入能直接当作工具入参 */
-  const matches = computed(() => catalog.filter((tool) => tool.accepts?.(query.value)));
-
-  /** 搜索结果:工具名 / 关键字字面命中;已进匹配结果的不重复出现 */
+  /**
+   * 搜索结果:工具名 / 关键字字面命中。
+   * 名称命中优先于内容匹配:用户是在找工具本身,view 型进入时不带参。
+   */
   const named = computed(() => {
     const keyword = query.value.trim().toLowerCase();
     if (!keyword) {
@@ -93,11 +100,15 @@ export function useResults({ query, onActivate }: UseResultsOptions) {
     }
     return catalog.filter(
       (tool) =>
-        !matches.value.includes(tool) &&
-        (tool.title.toLowerCase().includes(keyword) ||
-          tool.keywords.some((alias) => alias.toLowerCase().includes(keyword))),
+        tool.title.toLowerCase().includes(keyword) ||
+        tool.keywords.some((alias) => alias.toLowerCase().includes(keyword)),
     );
   });
+
+  /** 匹配结果:当前输入能直接当作工具入参;名称已命中的归搜索结果,不重复出现 */
+  const matches = computed(() =>
+    catalog.filter((tool) => !named.value.includes(tool) && tool.accepts?.(query.value)),
+  );
 
   /** 当前状态下按屏幕顺序排列的分区,已剔除空分区、盖好全局下标 */
   const sections = computed<ResultSection[]>(() =>
@@ -114,13 +125,16 @@ export function useResults({ query, onActivate }: UseResultsOptions) {
 
   /**
    * 按屏幕行分组的可选项:每行最多 8 个磁贴,分区超过一行时拆开。
-   * ↑↓ 在这些行之间跳;剪贴板列表接入后,每个列表项作为单独一行插到最前。
+   * 条目保留分区信息,Enter 激活时随之回传。
    */
-  const rows = computed<ToolItem[][]>(() =>
-    sections.value.flatMap((section) => chunkRows(section.entries.map((entry) => entry.tool))),
+  const rows = computed<SectionEntry[][]>(() =>
+    sections.value.flatMap((section) => chunkRows(section.entries)),
   );
 
-  const { selectedIndex, select, reset } = useRowNavigation({ rows, onActivate });
+  const { selectedIndex, select, reset } = useRowNavigation<SectionEntry>({
+    rows,
+    onActivate: (entry) => onActivate(entry.tool, entry.section),
+  });
 
   // 查询变化时选中归零(主页 ↔ 搜索态切换也走这里);
   // 窗口收起再唤起不复位,选中与搜索词一起保留上次状态

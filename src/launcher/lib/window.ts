@@ -2,17 +2,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { isTauriRuntime } from "@/lib/runtime";
 
 /** 窗口固定宽度（逻辑像素，与 tauri.conf.json 的 width 一致） */
 const WINDOW_WIDTH = 760;
-
-/**
- * 当前页面是否跑在 Tauri WebView 里。
- * WebView 会注入 `__TAURI_INTERNALS__`；`vite` / 浏览器预览没有这层 IPC，窗口 API 不可用。
- */
-function isTauriRuntime(): boolean {
-  return "__TAURI_INTERNALS__" in globalThis;
-}
 
 /** 隐藏启动器窗口（对应后端 hide_launcher 命令） */
 export function hideLauncher(): Promise<void> {
