@@ -11,12 +11,12 @@ export interface UseLauncherOptions {
 
 /**
  * 启动器窗口级状态编排：
- * 维护搜索词、响应后端 launcher-open 事件、处理 Esc 分层收起。
+ * 维护主页搜索词、响应后端 launcher-open 事件、处理 Esc 分层收起。
  * 收起只是隐藏窗口，搜索词与所在页面等状态保留，下次唤起接着上次的样子。
  */
 export function useLauncher(options: UseLauncherOptions = {}) {
-  /** 当前搜索词;主页是全局搜索词,工具页内是页内过滤词 */
-  const query = ref("");
+  /** 主页全局搜索词;工具页内过滤词是另一份状态(useToolView 的 toolQuery),互不串扰 */
+  const homeQuery = ref("");
 
   const toolView = useToolView();
 
@@ -30,10 +30,9 @@ export function useLauncher(options: UseLauncherOptions = {}) {
     if (event.key !== "Escape" || event.isComposing) {
       return;
     }
-    // Esc 分层：工具页内先返回主页（过滤词一并放弃），主页才隐藏窗口
+    // Esc 分层：工具页内先返回主页（close 内部放弃过滤词，主页现场保持原样），主页才隐藏窗口
     if (toolView.activeModule.value) {
       toolView.close();
-      query.value = "";
       return;
     }
     hide();
@@ -44,7 +43,7 @@ export function useLauncher(options: UseLauncherOptions = {}) {
   onMounted(async () => {
     window.addEventListener("keydown", handleKeydown);
     unlisteners = await Promise.all([
-      // 唤起时不清 query：保留上次搜索词，SearchBar 聚焦时全选，输入即覆盖
+      // 唤起时不清搜索词：保留上次现场，搜索框聚焦时全选，输入即覆盖
       onLauncherOpen(() => {
         options.onOpen?.();
       }),
@@ -58,5 +57,5 @@ export function useLauncher(options: UseLauncherOptions = {}) {
     }
   });
 
-  return { query, hide };
+  return { homeQuery, hide };
 }

@@ -128,7 +128,9 @@ function handleScroll() {
           </span>
         </header>
         <div class="min-h-0 flex-1 overflow-y-auto p-4">
-          <p class="cursor-text text-sm break-words whitespace-pre-wrap text-content select-text">
+          <p
+            class="cursor-text text-sm wrap-break-word whitespace-pre-wrap text-content select-text"
+          >
             {{ detailText }}
           </p>
           <p v-if="detailTruncated" class="mt-3 text-xs text-muted">

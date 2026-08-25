@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useTemplateRef } from "vue";
+import HomeSearchBar from "@/launcher/components/HomeSearchBar.vue";
 import LauncherFooter from "@/launcher/components/LauncherFooter.vue";
 import ResultsPanel from "@/launcher/components/ResultsPanel.vue";
-import SearchBar from "@/launcher/components/SearchBar.vue";
+import ToolSearchBar from "@/launcher/components/ToolSearchBar.vue";
 import { useAutoHeight } from "@/launcher/composables/useAutoHeight";
 import { useLauncher } from "@/launcher/composables/useLauncher";
 import type { SectionKey } from "@/launcher/composables/useResults";
@@ -10,33 +11,31 @@ import { useToolView } from "@/launcher/composables/useToolView";
 import { moduleOf } from "@/tools/registry";
 import { isViewModule, type ToolItem } from "@/tools/types";
 
-const searchBar = useTemplateRef<InstanceType<typeof SearchBar>>("searchBar");
+/** 当前渲染的搜索栏(主页 / 工具页二选一,共用 ref 名),窗口唤起时聚焦用 */
+const searchBar = useTemplateRef<{ focus: () => void }>("searchBar");
 const root = useTemplateRef<HTMLElement>("root");
 
-const { query, hide } = useLauncher({
+const { homeQuery, hide } = useLauncher({
   onOpen: () => searchBar.value?.focus(),
 });
 
-const { activeModule, open } = useToolView();
+const { activeModule, toolQuery, open } = useToolView();
 
 // 窗口高度跟随根元素(面板 + 阴影边距),上限由面板的 CSS max-h 封顶
 useAutoHeight(root);
 
 /**
  * 打开工具:按 id 查注册单元,view 型切入工具页、launch 型执行动作。
- * view 型进入时,仅内容匹配(matches)的搜索词作为入参带入页内过滤,
- * 名称命中 / 主页点入则清空,避免「剪贴板」这类找工具的词被当成过滤词。
+ * view 型进入时,仅内容匹配(matches)的搜索词作为过滤词带入工具页,
+ * 名称命中 / 主页点入则从空开始;主页搜索词不动,退出工具页后主页保持原样。
  */
 async function activate(tool: ToolItem, source: SectionKey) {
   const module = moduleOf(tool);
   if (isViewModule(module)) {
-    if (source !== "matches") {
-      query.value = "";
-    }
-    open(module);
+    open(module, source === "matches" ? homeQuery.value : "");
     return;
   }
-  await module.run({ query: query.value });
+  await module.run({ query: homeQuery.value });
 }
 </script>
 
@@ -52,9 +51,15 @@ async function activate(tool: ToolItem, source: SectionKey) {
       class="flex max-h-128 min-w-0 flex-1 cursor-default flex-col overflow-hidden rounded-2xl bg-surface antialiased scheme-light-dark shadow-panel ring-1 ring-edge select-none"
       :class="activeModule ? 'h-128' : ''"
     >
-      <SearchBar ref="searchBar" v-model="query" />
-      <component :is="activeModule.page" v-if="activeModule" :query="query" />
-      <ResultsPanel v-else :query="query" @activate="activate" />
+      <!-- 主页与工具页各自成组:搜索栏随态切换重建,挂载时自动聚焦 -->
+      <template v-if="activeModule">
+        <ToolSearchBar ref="searchBar" />
+        <component :is="activeModule.page" :query="toolQuery" />
+      </template>
+      <template v-else>
+        <HomeSearchBar ref="searchBar" v-model="homeQuery" />
+        <ResultsPanel :query="homeQuery" @activate="activate" />
+      </template>
       <LauncherFooter />
     </section>
   </div>
