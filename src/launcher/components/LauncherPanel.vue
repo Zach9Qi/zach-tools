@@ -26,13 +26,14 @@ useAutoHeight(root);
 
 /**
  * 打开工具:按 id 查注册单元,view 型切入工具页、launch 型执行动作。
- * view 型进入时,仅内容匹配(matches)的搜索词作为过滤词带入工具页,
- * 名称命中 / 主页点入则从空开始;主页搜索词不动,退出工具页后主页保持原样。
+ * 内容匹配进入:主页搜索词先带入工具搜索栏作过滤词;名称命中 / 主页点入则从空开始。
+ * view 型一旦打开就把主页搜索词清空,退出不写回,回到主页是空白搜索。
  */
 async function activate(tool: ToolItem, source: SectionKey) {
   const module = moduleOf(tool);
   if (isViewModule(module)) {
     open(module, source === "matches" ? homeQuery.value : "");
+    homeQuery.value = "";
     return;
   }
   await module.run({ query: homeQuery.value });

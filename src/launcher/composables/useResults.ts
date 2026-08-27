@@ -12,7 +12,7 @@ export interface UseResultsOptions {
   query: Ref<string>;
   /**
    * 回车 / 点击磁贴时回调。source 为条目所在分区:
-   * matches 表示输入是工具入参(view 型进入时带参),其余分区进入时清空搜索词。
+   * matches 表示输入是工具入参(view 型进入时带入工具栏),打开 view 型后主页搜索词一律清空。
    */
   onActivate: (tool: ToolItem, source: SectionKey) => void;
 }

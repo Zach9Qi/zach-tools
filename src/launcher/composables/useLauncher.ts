@@ -15,7 +15,7 @@ export interface UseLauncherOptions {
  * 收起只是隐藏窗口，搜索词与所在页面等状态保留，下次唤起接着上次的样子。
  */
 export function useLauncher(options: UseLauncherOptions = {}) {
-  /** 主页全局搜索词;工具页内过滤词是另一份状态(useToolView 的 toolQuery),互不串扰 */
+  /** 主页全局搜索词;打开 view 型工具后由外壳清空,工具页过滤词是另一份状态,退出不写回 */
   const homeQuery = ref("");
 
   const toolView = useToolView();
@@ -30,7 +30,7 @@ export function useLauncher(options: UseLauncherOptions = {}) {
     if (event.key !== "Escape" || event.isComposing) {
       return;
     }
-    // Esc 分层：工具页内先返回主页（close 内部放弃过滤词，主页现场保持原样），主页才隐藏窗口
+    // Esc 分层：工具页内先返回主页（过滤词丢弃,主页搜索词在进入时已清空），主页才隐藏窗口
     if (toolView.activeModule.value) {
       toolView.close();
       return;

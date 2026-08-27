@@ -4,7 +4,7 @@ import type { ViewToolModule } from "@/tools/types";
 /** 当前打开的工具页注册单元;null = 主页。模块级状态,所有组件共享同一份 */
 const activeModule = ref<ViewToolModule | null>(null);
 
-/** 工具页内过滤词;随 open 初始化、close 清空,与主页搜索词是两份状态,互不串扰 */
+/** 工具页内过滤词;随 open 初始化、close 清空,与主页搜索词是两份状态,打开后主页已清空、退出不写回 */
 const toolQuery = ref("");
 
 /**
@@ -14,13 +14,17 @@ const toolQuery = ref("");
  * 窗口隐藏不重置(保留现场),退出只由 Esc / 徽章点击 / 空框退格触发。
  */
 export function useToolView() {
-  /** 进入工具页;initialQuery 仅在当前输入就是工具入参时传入(匹配结果进入),作页内过滤词 */
+  /**
+   * 进入工具页;initialQuery 仅在内容匹配进入时传入(主页搜索词带入作过滤词)。
+   * 名称命中 / 主页点入不传或传空串,过滤词从空开始。
+   * 主页搜索词由调用方在 open 之后自行清空,退出不写回。
+   */
   function open(module: ViewToolModule, initialQuery = "") {
     toolQuery.value = initialQuery;
     activeModule.value = module;
   }
 
-  /** 返回主页,页内过滤词一并放弃;主页搜索词是另一份状态,退出后主页保持原样 */
+  /** 返回主页,页内过滤词一并放弃;主页搜索词在进入时已清空,不带回工具栏上的编辑 */
   function close() {
     activeModule.value = null;
     toolQuery.value = "";
