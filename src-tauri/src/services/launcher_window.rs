@@ -1,6 +1,6 @@
 //! 启动器窗口的开合编排：维护粘贴目标窗口的记录，并向前端广播开合事件。
 
-use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Runtime, WebviewWindow};
 
 use crate::platform;
 use crate::services::tray;
@@ -13,7 +13,7 @@ const EVENT_OPEN: &str = "launcher-open";
 /// 窗口收起事件
 const EVENT_CLOSE: &str = "launcher-close";
 
-/// 展示启动器：先记录当前前台窗口作为后续粘贴目标，再显示并聚焦。
+/// 展示启动器：先记录当前前台窗口作为后续粘贴目标，再定位、显示并聚焦。
 pub fn show<R: Runtime>(app: &AppHandle<R>) {
     if let Some(state) = app.try_state::<AppState>() {
         state.remember_paste_target(platform::foreground_window());
@@ -23,10 +23,29 @@ pub fn show<R: Runtime>(app: &AppHandle<R>) {
         return;
     };
     let _ = window.set_ignore_cursor_events(false);
+    position_anchored(&window);
     let _ = window.show();
-    let _ = window.center();
     let _ = window.set_focus();
     let _ = app.emit(EVENT_OPEN, ());
+}
+
+/// 把窗口摆到启动器的惯例位置：水平居中，顶边固定在工作区高度的 1/4 处
+/// （Flow Launcher / PowerToys Run / Spotlight 同款摆法）。
+/// 顶边只取决于工作区，不依赖内容尺寸；内容增高时窗口从这条顶边向下生长，
+/// 搜索框在任何状态切换中都不移动。
+fn position_anchored<R: Runtime>(window: &WebviewWindow<R>) {
+    let Ok(Some(monitor)) = window.current_monitor() else {
+        return;
+    };
+    let Ok(size) = window.outer_size() else {
+        return;
+    };
+    let work = monitor.work_area();
+    let x = f64::from(work.position.x) + (f64::from(work.size.width) - f64::from(size.width)) / 2.0;
+    let y = f64::from(work.position.y) + f64::from(work.size.height) / 4.0;
+    // 工作区比窗口还窄时贴住左缘，不让面板顶出屏幕
+    let x = x.max(f64::from(work.position.x));
+    let _ = window.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
 }
 
 /// 收起启动器并通知前端复位状态。
