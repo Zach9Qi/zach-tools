@@ -1,4 +1,5 @@
-import { computed, onMounted, onUnmounted, ref, type Ref } from "vue";
+import { computed, ref, type Ref } from "vue";
+import { useKeymap } from "@/launcher/composables/useKeymap";
 
 /** useRowNavigation 配置 */
 export interface UseRowNavigationOptions<T> {
@@ -13,6 +14,7 @@ export interface UseRowNavigationOptions<T> {
  * 全部条目从上到下、从左到右展平成一维 selectedIndex:
  * ←→ 沿展平顺序 ±1(行尾顺到下一行),↑↓ 行间跳转且列号就近保留,
  * 两个方向都首尾回绕,Enter 触发选中项。何时复位选中由调用方通过 reset 决定。
+ * 按键经 useKeymap 登记,页脚提示由同一份定义派生。
  */
 export function useRowNavigation<T>({ rows, onActivate }: UseRowNavigationOptions<T>) {
   /** 当前全部可选项的展平顺序,selectedIndex 指向这里 */
@@ -72,39 +74,31 @@ export function useRowNavigation<T>({ rows, onActivate }: UseRowNavigationOption
     selectedIndex.value = indexAt(targetRow, Math.min(position.col, target.length - 1));
   }
 
-  function handleKeydown(event: KeyboardEvent) {
-    // 输入法组词中的按键交给输入法;带修饰键的组合(如全局快捷键 Alt+Enter、
-    // Shift+←→ 选中文本、Ctrl+←→ 跳词)不当作导航
-    if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
-      return;
-    }
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      // 阻止光标在输入框内跳到行首 / 行尾
-      event.preventDefault();
-      moveRow(event.key === "ArrowDown" ? 1 : -1);
-      return;
-    }
-    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-      // 行导航优先于输入框光标移动(启动器场景改词以退格为主)
-      event.preventDefault();
-      moveFlat(event.key === "ArrowRight" ? 1 : -1);
-      return;
-    }
-    if (event.key === "Enter") {
-      const item = flat.value[selectedIndex.value];
-      if (item) {
-        onActivate(item);
-      }
-    }
-  }
-
-  onMounted(() => {
-    window.addEventListener("keydown", handleKeydown);
-  });
-
-  onUnmounted(() => {
-    window.removeEventListener("keydown", handleKeydown);
-  });
+  // 按键、页脚文案与回调同源登记;文案先写死,出现第二个使用方再提成选项。
+  // 行导航优先于输入框光标移动(启动器场景改词以退格为主),接管由 useKeymap 统一 preventDefault
+  useKeymap([
+    {
+      keys: ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"],
+      label: "选择",
+      onPress: (event) => {
+        if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+          moveRow(event.key === "ArrowDown" ? 1 : -1);
+        } else {
+          moveFlat(event.key === "ArrowRight" ? 1 : -1);
+        }
+      },
+    },
+    {
+      keys: ["Enter"],
+      label: "打开",
+      onPress: () => {
+        const item = flat.value[selectedIndex.value];
+        if (item) {
+          onActivate(item);
+        }
+      },
+    },
+  ]);
 
   return { selectedIndex, select, reset };
 }

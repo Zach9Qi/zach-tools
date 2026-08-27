@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import type { UnlistenFn } from "@tauri-apps/api/event";
+import { useKeymap } from "@/launcher/composables/useKeymap";
 import { onLauncherOpen } from "@/launcher/lib/window";
 import {
   copyClipboardItem,
@@ -214,34 +215,44 @@ export function useClipboardPage(query: Ref<string>) {
     selectedId.value = items.value[index]?.id ?? null;
   }
 
-  /** ↑↓ 选中(首尾回绕,与主页磁贴导航一致),Enter 粘贴选中项;←→ 留给输入框光标 */
-  function handleKeydown(event: KeyboardEvent) {
-    // 输入法组词与修饰键组合(如全局快捷键 Alt+Enter)不当作列表操作
-    if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+  /** ↑↓ 首尾回绕移动选中(与主页磁贴导航一致);选中项刚被删(-1)时从边界重新开始 */
+  function moveSelection(delta: 1 | -1) {
+    const count = items.value.length;
+    if (count === 0) {
       return;
     }
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      // 阻止光标在输入框内跳到行首 / 行尾
-      event.preventDefault();
-      const count = items.value.length;
-      if (count === 0) {
-        return;
-      }
-      const delta = event.key === "ArrowDown" ? 1 : -1;
-      const current = selectedIndex.value;
-      // 选中项刚被删除(-1)时从边界重新开始
-      const next =
-        current === -1 ? (delta === 1 ? 0 : count - 1) : (current + delta + count) % count;
-      selectedId.value = items.value[next]?.id ?? null;
-      return;
-    }
-    if (event.key === "Enter") {
-      const item = selected.value;
-      if (item) {
-        void paste(item);
-      }
-    }
+    const current = selectedIndex.value;
+    const next =
+      current === -1 ? (delta === 1 ? 0 : count - 1) : (current + delta + count) % count;
+    selectedId.value = items.value[next]?.id ?? null;
   }
+
+  // 按键、页脚提示与回调同源登记;←→ 不绑定,留给输入框光标(过滤框改词以退格为主)
+  useKeymap([
+    {
+      keys: ["ArrowUp", "ArrowDown"],
+      label: "选择",
+      onPress: (event) => moveSelection(event.key === "ArrowDown" ? 1 : -1),
+    },
+    {
+      keys: ["Enter"],
+      label: "粘贴",
+      onPress: () => {
+        if (selected.value) {
+          void paste(selected.value);
+        }
+      },
+    },
+    {
+      keys: ["Delete"],
+      label: "删除",
+      onPress: () => {
+        if (selected.value) {
+          void remove(selected.value);
+        }
+      },
+    },
+  ]);
 
   // 过滤词变化与「有过滤词时的新条目事件」共用的防抖重查
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
@@ -254,7 +265,6 @@ export function useClipboardPage(query: Ref<string>) {
   let unlisteners: UnlistenFn[] = [];
 
   onMounted(async () => {
-    window.addEventListener("keydown", handleKeydown);
     // 首屏立即拉(可能带着主页传入的搜索词)
     void refreshList("reset");
     unlisteners = await Promise.all([
@@ -265,7 +275,6 @@ export function useClipboardPage(query: Ref<string>) {
   });
 
   onUnmounted(() => {
-    window.removeEventListener("keydown", handleKeydown);
     clearTimeout(refreshTimer);
     clearTimeout(copiedTimer);
     for (const unlisten of unlisteners) {
