@@ -40,6 +40,7 @@ async fn ingest<R: Runtime>(app: &AppHandle<R>, capture: ClipboardCapture) -> Re
         return Ok(());
     }
 
+    // upsert 返回预览形态,事件载荷不携带原文(超长文本不进 IPC)
     let item = store::upsert_text(state.db(), &capture.text, &hash).await?;
     store::prune(state.db(), store::MAX_HISTORY_ITEMS).await?;
     app.emit(EVENT_NEW_ITEM, &item)?;

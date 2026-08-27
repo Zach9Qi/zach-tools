@@ -8,40 +8,45 @@ import {
   onClipboardNewItem,
   pasteClipboardItem,
   type ClipboardItem,
+  type ClipboardListCursor,
 } from "@/tools/clipboard/lib/api";
 
 /** 单页拉取条数,与后端默认值一致 */
-const PAGE_SIZE = 100;
-/** 输入过滤的防抖间隔(毫秒):本地 SQLite 查询很快,只挡连续击键 */
-const FILTER_DEBOUNCE_MS = 120;
+const PAGE_SIZE = 50;
+/** 列表重查的防抖间隔(毫秒):本地 SQLite 查询很快,只挡连续击键与事件风暴 */
+const REFRESH_DEBOUNCE_MS = 120;
 
 /**
- * 剪贴板页状态编排:分页列表、输入过滤、键盘选中、粘贴/删除、新条目实时插入。
- * 生命周期与页面组件一致(退出工具页即卸载,重进重拉);
- * 窗口隐藏期间组件仍存活(保留现场),再次唤起经 launcher-open 刷新列表。
+ * 剪贴板页状态编排:keyset 分页列表、输入过滤、键盘选中、粘贴/删除、新条目实时合并。
+ * 生命周期与页面组件一致(退出工具页即卸载,重进重拉)。
+ * 窗口隐藏期间组件仍存活,新条目靠事件持续合入本地列表;
+ * 再次唤起只比对首条 id:对得上就不重置,滚动位置与选中项留着。
  */
 export function useClipboardPage(query: Ref<string>) {
-  /** 当前列表,已按最近使用倒序 */
+  /** 当前列表,与后端 (last_used_at DESC, id DESC) 全序一致 */
   const items = ref<ClipboardItem[]>([]);
-  /** 键盘 / 悬停选中的下标 */
-  const selectedIndex = ref(0);
-  /** 是否正在请求(refresh 期间挡住 loadMore) */
+  /** 选中条目 id:列表插入/重排时选中跟随条目本身,不随下标漂移 */
+  const selectedId = ref<number | null>(null);
+  /** 是否正在请求(重查期间挡住 loadMore) */
   const loading = ref(false);
   /** 后端已无更多数据 */
   const exhausted = ref(false);
-  /** refresh 完成计数,页面组件据此把滚动条拉回顶部 */
+  /** 列表重置(过滤词变化 / 藏窗口时漏了事件)完成计数,页面组件据此把滚动条拉回顶部 */
   const refreshTick = ref(0);
-  /** 当前选中条目,详情栏据此渲染;列表为空时为 null */
-  const selected = computed(() => items.value[selectedIndex.value] ?? null);
   /** 最近一次「仅复制」成功的条目 id,短暂保留用于按钮反馈 */
   const copiedId = ref<number | null>(null);
 
+  /** 选中条目下标;选中项不在列表中(如刚被删)时为 -1 */
+  const selectedIndex = computed(() =>
+    items.value.findIndex((item) => item.id === selectedId.value),
+  );
+  /** 当前选中条目,详情栏据此渲染;列表为空时为 null */
+  const selected = computed(() => items.value[selectedIndex.value] ?? null);
+
   /**
-   * 已从后端分页拉走的条数。loadMore 的 offset 用它而不是 items.length:
-   * 事件插入的新条目会让两者错位,删除时回退一位,避免分页跳过或重复。
+   * 当前列表版本号。整表重拉(进页、改搜索词、再次唤起)时加一,翻页不加。
+   * 请求发出时记下当时的版本,回来时对不上就丢掉,避免旧搜索或旧翻页盖住新结果。
    */
-  let fetchedCount = 0;
-  /** 请求代次:refresh 递增,旧请求的迟到响应按代次丢弃 */
   let generation = 0;
 
   function trimmedQuery(): string | undefined {
@@ -49,22 +54,49 @@ export function useClipboardPage(query: Ref<string>) {
     return keyword ? keyword : undefined;
   }
 
-  /** 重置分页并拉取首屏 */
-  async function refresh() {
-    const gen = ++generation;
+  /** 把条目放到列表顶部(已在列表中则先移除旧位置),镜像后端的 last_used_at 排序 */
+  function placeOnTop(item: ClipboardItem) {
+    const index = items.value.findIndex((it) => it.id === item.id);
+    if (index !== -1) {
+      items.value.splice(index, 1);
+    }
+    items.value.unshift(item);
+  }
+
+  /** 用首屏结果整体重置:回到顶部、选中第一项 */
+  function applyReset(result: ClipboardItem[]) {
+    items.value = result;
+    exhausted.value = result.length < PAGE_SIZE;
+    selectedId.value = result[0]?.id ?? null;
+    refreshTick.value += 1;
+  }
+
+  /**
+   * 列表请求的统一入口:loading、错误、过期丢弃都在这里处理。
+   * 调用方只声明差异:要不要作废还在路上的请求、拉哪一页、结果如何合入。
+   */
+  async function requestList(options: {
+    /** 为 true 时版本号加一,还在路上的请求回来后作废(不写列表、不关 loading) */
+    invalidate?: boolean;
+    /** keyset 翻页游标,缺省拉首屏 */
+    cursor?: ClipboardListCursor;
+    /** 把本次结果合入列表;发出后又整表重拉过则不调用 */
+    apply: (result: ClipboardItem[]) => void;
+  }): Promise<void> {
+    // 记下出发时的版本;invalidate 则先换新版本,让旧请求对不上号
+    const gen = options.invalidate ? ++generation : generation;
     loading.value = true;
     try {
-      const result = await listClipboardItems({ query: trimmedQuery(), limit: PAGE_SIZE });
-      if (gen !== generation) {
-        return;
+      const result = await listClipboardItems({
+        query: trimmedQuery(),
+        limit: PAGE_SIZE,
+        cursor: options.cursor,
+      });
+      if (gen === generation) {
+        options.apply(result);
       }
-      items.value = result;
-      fetchedCount = result.length;
-      exhausted.value = result.length < PAGE_SIZE;
-      selectedIndex.value = 0;
-      refreshTick.value += 1;
     } catch (error) {
-      console.error("剪贴板列表加载失败:", error);
+      console.error("剪贴板列表请求失败:", error);
     } finally {
       if (gen === generation) {
         loading.value = false;
@@ -72,34 +104,49 @@ export function useClipboardPage(query: Ref<string>) {
     }
   }
 
-  /** 滚动到底时拉取下一页 */
+  /**
+   * 拉取首屏。mode 为 reset 时无条件重置(挂载 / 过滤词变化);
+   * 为 sync 时只比首条 id:对不上说明藏窗口时漏了事件,才整表重拉;
+   * 对得上就不重置,滚动和选中都留着。
+   */
+  async function refreshList(mode: "reset" | "sync") {
+    await requestList({
+      invalidate: true,
+      apply: (result) => {
+        if (mode === "reset" || result[0]?.id !== items.value[0]?.id) {
+          applyReset(result);
+        }
+      },
+    });
+  }
+
+  /**
+   * 滚动到底时拉取下一页。游标锚定在末行的 (lastUsedAt, id) 值上,
+   * 期间的置顶/删除不会造成跳行或重行,无需任何位置记账。
+   */
   async function loadMore() {
-    if (loading.value || exhausted.value) {
+    const last = items.value[items.value.length - 1];
+    if (loading.value || exhausted.value || !last) {
       return;
     }
-    const gen = generation;
-    loading.value = true;
-    try {
-      const result = await listClipboardItems({
-        query: trimmedQuery(),
-        limit: PAGE_SIZE,
-        offset: fetchedCount,
-      });
-      if (gen !== generation) {
-        return;
-      }
-      fetchedCount += result.length;
-      exhausted.value = result.length < PAGE_SIZE;
-      // 事件插入可能已带来其中某些条目,按 id 去重后追加
-      const known = new Set(items.value.map((item) => item.id));
-      items.value.push(...result.filter((item) => !known.has(item.id)));
-    } catch (error) {
-      console.error("剪贴板列表加载更多失败:", error);
-    } finally {
-      if (gen === generation) {
-        loading.value = false;
-      }
-    }
+    await requestList({
+      cursor: { lastUsedAt: last.lastUsedAt, id: last.id },
+      apply: (result) => {
+        exhausted.value = result.length < PAGE_SIZE;
+        // 在途期间事件可能已把本页某条目置顶(重复复制),响应是移动前的快照,按 id 去重
+        const known = new Set(items.value.map((item) => item.id));
+        items.value.push(...result.filter((item) => !known.has(item.id)));
+      },
+    });
+  }
+
+  /**
+   * 本地镜像后端的 touch:粘贴/复制会刷新库里的 last_used_at 并把条目排到最前,
+   * 而自写事件被后端抑制不会推回来,这里同步置顶,让本地第一条跟库里一致,
+   * 下次唤起比对首条时才不会误以为漏了事件。
+   */
+  function mirrorTouch(item: ClipboardItem) {
+    placeOnTop({ ...item, lastUsedAt: Date.now() });
   }
 
   /** 粘贴条目;后端负责隐藏窗口、还原焦点并注入 Ctrl+V */
@@ -108,7 +155,9 @@ export function useClipboardPage(query: Ref<string>) {
       await pasteClipboardItem(item.id);
     } catch (error) {
       console.error("粘贴失败:", error);
+      return;
     }
+    mirrorTouch(item);
   }
 
   let copiedTimer: ReturnType<typeof setTimeout> | undefined;
@@ -121,6 +170,7 @@ export function useClipboardPage(query: Ref<string>) {
       console.error("复制失败:", error);
       return;
     }
+    mirrorTouch(item);
     copiedId.value = item.id;
     clearTimeout(copiedTimer);
     copiedTimer = setTimeout(() => {
@@ -128,7 +178,7 @@ export function useClipboardPage(query: Ref<string>) {
     }, 1000);
   }
 
-  /** 删除条目并同步本地列表与分页游标 */
+  /** 删除条目;删的是选中项时就近改选同位置的下一条 */
   async function remove(item: ClipboardItem) {
     try {
       await deleteClipboardItem(item.id);
@@ -141,31 +191,27 @@ export function useClipboardPage(query: Ref<string>) {
       return;
     }
     items.value.splice(index, 1);
-    fetchedCount = Math.max(0, fetchedCount - 1);
-    if (selectedIndex.value >= items.value.length) {
-      selectedIndex.value = Math.max(0, items.value.length - 1);
+    if (selectedId.value === item.id) {
+      const fallback = items.value[Math.min(index, items.value.length - 1)];
+      selectedId.value = fallback ? fallback.id : null;
     }
   }
 
-  /** 新条目落库:命中当前过滤词才展示;已在列表中(重复复制)则上浮到顶 */
+  /**
+   * 新条目落库(外部复制):无过滤词时直接置顶(重复复制则上浮);
+   * 有过滤词时不在前端复刻后端的匹配语义,只当失效信号,防抖后整表重查
+   */
   function handleNewItem(item: ClipboardItem) {
-    const keyword = trimmedQuery();
-    // 匹配语义与后端 LIKE 对齐(ASCII 不区分大小写),中文无大小写问题
-    if (keyword && !(item.textContent ?? "").toLowerCase().includes(keyword.toLowerCase())) {
+    if (trimmedQuery()) {
+      scheduleRefresh();
       return;
     }
-    const index = items.value.findIndex((it) => it.id === item.id);
-    if (index !== -1) {
-      items.value.splice(index, 1);
-    } else {
-      fetchedCount += 1;
-    }
-    items.value.unshift(item);
+    placeOnTop(item);
   }
 
   /** 鼠标悬停等场景直接指定选中项 */
   function select(index: number) {
-    selectedIndex.value = index;
+    selectedId.value = items.value[index]?.id ?? null;
   }
 
   /** ↑↓ 选中(首尾回绕,与主页磁贴导航一致),Enter 粘贴选中项;←→ 留给输入框光标 */
@@ -182,39 +228,45 @@ export function useClipboardPage(query: Ref<string>) {
         return;
       }
       const delta = event.key === "ArrowDown" ? 1 : -1;
-      selectedIndex.value = (selectedIndex.value + delta + count) % count;
+      const current = selectedIndex.value;
+      // 选中项刚被删除(-1)时从边界重新开始
+      const next =
+        current === -1 ? (delta === 1 ? 0 : count - 1) : (current + delta + count) % count;
+      selectedId.value = items.value[next]?.id ?? null;
       return;
     }
     if (event.key === "Enter") {
-      const item = items.value[selectedIndex.value];
+      const item = selected.value;
       if (item) {
         void paste(item);
       }
     }
   }
 
-  // 输入过滤防抖;首屏在挂载时立即拉(可能带着主页传入的搜索词)
-  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-  watch(query, () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => void refresh(), FILTER_DEBOUNCE_MS);
-  });
+  // 过滤词变化与「有过滤词时的新条目事件」共用的防抖重查
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  function scheduleRefresh() {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => void refreshList("reset"), REFRESH_DEBOUNCE_MS);
+  }
+  watch(query, scheduleRefresh);
 
   let unlisteners: UnlistenFn[] = [];
 
   onMounted(async () => {
     window.addEventListener("keydown", handleKeydown);
-    void refresh();
+    // 首屏立即拉(可能带着主页传入的搜索词)
+    void refreshList("reset");
     unlisteners = await Promise.all([
       onClipboardNewItem(handleNewItem),
-      // 窗口隐藏不卸载页面(保留现场),再次唤起时刷新以纳入隐藏期间的新记录
-      onLauncherOpen(() => void refresh()),
+      // 隐藏期间列表由事件维护;唤起只比对首条,对得上就不重置
+      onLauncherOpen(() => void refreshList("sync")),
     ]);
   });
 
   onUnmounted(() => {
     window.removeEventListener("keydown", handleKeydown);
-    clearTimeout(debounceTimer);
+    clearTimeout(refreshTimer);
     clearTimeout(copiedTimer);
     for (const unlisten of unlisteners) {
       unlisten();

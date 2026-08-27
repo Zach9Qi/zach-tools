@@ -7,12 +7,12 @@ const props = defineProps<{ item: ClipboardItem; selected?: boolean }>();
 
 const emit = defineEmits<{ activate: []; select: [] }>();
 
-/** 预览截取长度:够填满一行,又不把超长文本(上限 10MB)塞进 DOM */
+/** 单行预览截取长度:够填满一行即可,不把整段预览(最多 5000 字符)塞进 DOM */
 const PREVIEW_MAX_CHARS = 200;
 
 /** 单行预览:先截断再把换行等空白折叠成空格 */
 const preview = computed(() =>
-  (props.item.textContent ?? "").slice(0, PREVIEW_MAX_CHARS).replace(/\s+/g, " ").trim(),
+  (props.item.textPreview ?? "").slice(0, PREVIEW_MAX_CHARS).replace(/\s+/g, " ").trim(),
 );
 
 const time = computed(() => formatRelativeTime(props.item.lastUsedAt));

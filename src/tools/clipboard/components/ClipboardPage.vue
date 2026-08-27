@@ -33,19 +33,17 @@ const {
 /** 过滤词(去空白),空态文案据此区分「无历史」与「无匹配」 */
 const keyword = computed(() => props.query.trim());
 
-/** 详情正文的渲染上限:条目文本上限 10MB,全量塞进 DOM 会卡死渲染 */
-const DETAIL_MAX_CHARS = 5000;
+/** 详情正文:后端已截断为最多 5000 字符的预览,原文不进前端 */
+const detailText = computed(() => selected.value?.textPreview ?? "");
+const detailTruncated = computed(() => (selected.value?.textLength ?? 0) > detailText.value.length);
 
-const selectedText = computed(() => selected.value?.textContent ?? "");
-const detailText = computed(() => selectedText.value.slice(0, DETAIL_MAX_CHARS));
-const detailTruncated = computed(() => selectedText.value.length > DETAIL_MAX_CHARS);
-
-/** 详情头部元信息:字符数 + 相对时间 */
+/** 详情头部元信息:原文字符数 + 相对时间 */
 const detailMeta = computed(() => {
   if (!selected.value) {
     return "";
   }
-  return `文本 · ${selectedText.value.length} 字符 · ${formatRelativeTime(selected.value.lastUsedAt)}`;
+  const chars = selected.value.textLength ?? detailText.value.length;
+  return `文本 · ${chars} 字符 · ${formatRelativeTime(selected.value.lastUsedAt)}`;
 });
 
 // 键盘选中后让条目滚进可视区
@@ -54,7 +52,7 @@ watch(selectedIndex, async (index) => {
   listEl.value?.children[index]?.scrollIntoView({ block: "nearest" });
 });
 
-// 列表刷新(输入过滤 / 窗口唤起)后回到顶部
+// 列表重置(输入过滤 / 藏窗口时漏了事件)后回到顶部;普通唤起不触发,滚动位置留着
 watch(refreshTick, async () => {
   await nextTick();
   listEl.value?.scrollTo({ top: 0 });
@@ -134,7 +132,7 @@ function handleScroll() {
             {{ detailText }}
           </p>
           <p v-if="detailTruncated" class="mt-3 text-xs text-muted">
-            内容过长,仅显示前 {{ DETAIL_MAX_CHARS }} 字符
+            内容过长,仅显示前 {{ detailText.length }} 字符
           </p>
         </div>
       </div>

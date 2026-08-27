@@ -5,14 +5,16 @@ import { isTauriRuntime } from "@/lib/runtime";
 /** 剪贴板内容类型,与后端 ClipboardKind 的序列化值一一对应 */
 export type ClipboardKind = "text" | "image" | "files";
 
-/** 剪贴板历史条目,与后端 ClipboardItem(camelCase 序列化)一一对应 */
+/** 剪贴板历史条目(预览形态),与后端 ClipboardItem(camelCase 序列化)一一对应 */
 export interface ClipboardItem {
   /** 主键,操作(粘贴/复制/删除)时回传 */
   id: number;
   /** 内容类型;当前后端只入库 text,image / files 为预留 */
   kind: ClipboardKind;
-  /** [text] 文本内容 */
-  textContent: string | null;
+  /** [text] 文本预览(最多 5000 字符);原文不出库,粘贴/复制按 id 在后端现取 */
+  textPreview: string | null;
+  /** [text] 原文总字符数,配合 textPreview 判断是否被截断 */
+  textLength: number | null;
   /** [image] 原图落盘路径 */
   imagePath: string | null;
   /** [image] 列表缩略图落盘路径 */
@@ -31,17 +33,25 @@ export interface ClipboardItem {
   lastUsedAt: number;
 }
 
+/** keyset 分页游标:上一页最后一行的 (lastUsedAt, id)。值锚点,期间的插入/删除不影响翻页 */
+export interface ClipboardListCursor {
+  /** 最后一行的最近使用时间(epoch 毫秒) */
+  lastUsedAt: number;
+  /** 最后一行的 id,同毫秒时间戳的决胜键 */
+  id: number;
+}
+
 /** 列表查询参数,均可省略(后端默认 limit 100、上限 500) */
 export interface ListClipboardParams {
   /** 关键字,对文本内容做包含匹配 */
   query?: string;
   /** 单页条数 */
   limit?: number;
-  /** 跳过条数 */
-  offset?: number;
+  /** keyset 游标,缺省返回首页 */
+  cursor?: ClipboardListCursor;
 }
 
-/** 分页查询历史(按最近使用倒序) */
+/** 分页查询历史(按最近使用倒序,预览形态) */
 export function listClipboardItems(params: ListClipboardParams = {}): Promise<ClipboardItem[]> {
   if (!isTauriRuntime()) {
     return Promise.resolve([]);
@@ -74,7 +84,7 @@ export function deleteClipboardItem(id: number): Promise<void> {
 }
 
 /**
- * 监听新条目落库。
+ * 监听新条目落库(载荷为预览形态,不携带原文)。
  * 注意:重复复制已有内容时,后端会以同一 id、刷新过 lastUsedAt 的条目重发,
  * 消费方需按 id 去重(已存在则上浮,而不是重复插入)。
  */

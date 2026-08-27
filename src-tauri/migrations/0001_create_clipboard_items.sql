@@ -27,4 +27,6 @@ CREATE TABLE clipboard_items (
     last_used_at   INTEGER NOT NULL
 );
 
-CREATE INDEX idx_clipboard_items_last_used_at ON clipboard_items (last_used_at DESC);
+-- 列表全序为 (last_used_at DESC, id DESC)：id 决胜同毫秒并列，
+-- keyset 分页依赖这个确定的全序才能跨页不丢不重
+CREATE INDEX idx_clipboard_items_last_used_id ON clipboard_items (last_used_at DESC, id DESC);
