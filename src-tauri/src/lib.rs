@@ -72,8 +72,9 @@ fn setup_desktop(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             services::launcher_window::toggle(app);
         })?;
 
-    // 失焦自动收起
+    // 失焦自动收起；同时装上平台钩子（拦截 Alt 系统菜单）
     if let Some(window) = app.get_webview_window("main") {
+        services::launcher_window::install_platform_hooks(&window);
         let handle = app.handle().clone();
         window.on_window_event(move |event| {
             if matches!(event, tauri::WindowEvent::Focused(false)) {

@@ -1,4 +1,4 @@
-//! 平台相关能力的统一入口：剪贴板监听、前台窗口管理与按键注入。
+//! 平台相关能力的统一入口：剪贴板监听、前台窗口管理、按键注入与窗口钩子。
 //! 仅 Windows 有真实实现，其余平台提供空实现保证编译通过。
 
 /// 监听线程捕获到的一次剪贴板更新
@@ -11,11 +11,15 @@ pub struct ClipboardCapture {
 mod win_input;
 #[cfg(windows)]
 mod win_monitor;
+#[cfg(windows)]
+mod win_window;
 
 #[cfg(windows)]
 pub use win_input::{focus_window, foreground_window, send_ctrl_v};
 #[cfg(windows)]
 pub use win_monitor::spawn_monitor;
+#[cfg(windows)]
+pub use win_window::suppress_alt_sysmenu;
 
 #[cfg(not(windows))]
 mod stub;

@@ -124,6 +124,15 @@ fn rect_contains(rect: &tauri::Rect, x: f64, y: f64) -> bool {
     x >= left && x < left + width && y >= top && y < top + height
 }
 
+/// 窗口创建后立刻安装的平台钩子。目前仅 Windows：拦截 Alt 弹出的系统菜单。
+pub fn install_platform_hooks<R: Runtime>(window: &WebviewWindow<R>) {
+    #[cfg(windows)]
+    match window.hwnd() {
+        Ok(hwnd) => platform::suppress_alt_sysmenu(hwnd.0 as isize),
+        Err(err) => log::warn!("无法获取窗口句柄，Alt 系统菜单拦截未安装: {err}"),
+    }
+}
+
 /// 应用启动时的初始收纳：只隐藏窗口，不广播事件（此时前端尚未加载）。
 pub fn init_hidden<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = main_window(app) {
