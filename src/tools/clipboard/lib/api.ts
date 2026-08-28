@@ -41,10 +41,14 @@ export interface ClipboardListCursor {
   id: number;
 }
 
-/** 列表查询参数,均可省略(后端默认 limit 100、上限 500) */
+/** 列表查询参数,均可省略;过滤维度(关键字/类型/收藏)可叠加 */
 export interface ListClipboardParams {
   /** 关键字,对文本内容做包含匹配 */
   query?: string;
+  /** 限定内容类型,缺省不限 */
+  kind?: ClipboardKind;
+  /** 只看收藏 */
+  favoriteOnly?: boolean;
   /** 单页条数 */
   limit?: number;
   /** keyset 游标,缺省返回首页 */
@@ -81,6 +85,14 @@ export function deleteClipboardItem(id: number): Promise<void> {
     return Promise.resolve();
   }
   return invoke("delete_clipboard_item", { id });
+}
+
+/** 设置条目收藏状态;收藏项不参与容量清理 */
+export function setClipboardFavorite(id: number, favorite: boolean): Promise<void> {
+  if (!isTauriRuntime()) {
+    return Promise.resolve();
+  }
+  return invoke("set_clipboard_favorite", { id, favorite });
 }
 
 /**

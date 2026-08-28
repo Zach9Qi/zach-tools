@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, toRef, useTemplateRef, watch } from "vue";
-import IconCheck from "~icons/lucide/check";
 import IconClipboard from "~icons/lucide/clipboard";
-import IconCopy from "~icons/lucide/copy";
 import IconSearchX from "~icons/lucide/search-x";
-import IconTrash2 from "~icons/lucide/trash-2";
+import IconStar from "~icons/lucide/star";
+import ClipboardDetailPane from "@/tools/clipboard/components/ClipboardDetailPane.vue";
+import ClipboardFilterTabs from "@/tools/clipboard/components/ClipboardFilterTabs.vue";
 import ClipboardListItem from "@/tools/clipboard/components/ClipboardListItem.vue";
 import { useClipboardPage } from "@/tools/clipboard/composables/useClipboardPage";
-import { formatRelativeTime } from "@/tools/clipboard/lib/time";
 
 const props = defineProps<{
   /** 搜索框当前内容,作为页内过滤词(工具页组件的标准 prop 契约) */
@@ -23,27 +22,34 @@ const {
   copiedId,
   loading,
   refreshTick,
+  kindTabs,
+  activeKind,
+  favoriteOnly,
+  selectKind,
+  toggleFavoriteFilter,
   select,
   paste,
   copy,
   remove,
+  toggleFavorite,
   loadMore,
 } = useClipboardPage(toRef(props, "query"));
 
 /** 过滤词(去空白),空态文案据此区分「无历史」与「无匹配」 */
 const keyword = computed(() => props.query.trim());
 
-/** 详情正文:后端已截断为最多 5000 字符的预览,原文不进前端 */
-const detailText = computed(() => selected.value?.textPreview ?? "");
-const detailTruncated = computed(() => (selected.value?.textLength ?? 0) > detailText.value.length);
-
-/** 详情头部元信息:原文字符数 + 相对时间 */
-const detailMeta = computed(() => {
-  if (!selected.value) {
-    return "";
+/** 空态图标与文案:关键字无匹配 / 收藏空 / 无历史三种情形 */
+const emptyIcon = computed(() =>
+  keyword.value ? IconSearchX : favoriteOnly.value ? IconStar : IconClipboard,
+);
+const emptyHint = computed(() => {
+  if (keyword.value) {
+    return `没有与「${keyword.value}」匹配的记录`;
   }
-  const chars = selected.value.textLength ?? detailText.value.length;
-  return `文本 · ${chars} 字符 · ${formatRelativeTime(selected.value.lastUsedAt)}`;
+  if (favoriteOnly.value) {
+    return "还没有收藏,点亮条目的星标后常驻在这里";
+  }
+  return "暂无剪贴板历史,复制任意文本后自动记录";
 });
 
 // 键盘选中后让条目滚进可视区
@@ -52,7 +58,7 @@ watch(selectedIndex, async (index) => {
   listEl.value?.children[index]?.scrollIntoView({ block: "nearest" });
 });
 
-// 列表重置(输入过滤 / 藏窗口时漏了事件)后回到顶部;普通唤起不触发,滚动位置留着
+// 列表重置(输入过滤 / 切分类 / 藏窗口时漏了事件)后回到顶部;普通唤起不触发,滚动位置留着
 watch(refreshTick, async () => {
   await nextTick();
   listEl.value?.scrollTo({ top: 0 });
@@ -68,74 +74,50 @@ function handleScroll() {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 border-y border-line">
-    <div
-      v-if="items.length === 0 && !loading"
-      class="flex flex-1 flex-col items-center justify-center gap-3"
-    >
-      <div class="flex size-12 items-center justify-center rounded-2xl bg-surface-muted">
-        <IconSearchX v-if="keyword" class="size-5 text-muted" />
-        <IconClipboard v-else class="size-5 text-muted" />
-      </div>
-      <p class="text-sm text-content-secondary">
-        {{ keyword ? `没有与「${keyword}」匹配的记录` : "暂无剪贴板历史,复制任意文本后自动记录" }}
-      </p>
-    </div>
-    <template v-else>
-      <!-- 左栏:列表(单行预览),滚动到底分页加载 -->
+  <div class="flex min-h-0 flex-1 flex-col">
+    <ClipboardFilterTabs
+      :tabs="kindTabs"
+      :active-key="activeKind.key"
+      :favorite-only="favoriteOnly"
+      @select-kind="selectKind"
+      @toggle-favorite-only="toggleFavoriteFilter"
+    />
+    <div class="flex min-h-0 flex-1 border-y border-line">
       <div
-        ref="listEl"
-        class="flex w-2/5 shrink-0 flex-col overflow-y-auto border-r border-line p-2"
-        @scroll="handleScroll"
+        v-if="items.length === 0 && !loading"
+        class="flex flex-1 flex-col items-center justify-center gap-3"
       >
-        <ClipboardListItem
-          v-for="(item, index) in items"
-          :key="item.id"
-          :item="item"
-          :selected="index === selectedIndex"
-          @activate="paste(item)"
-          @select="select(index)"
-        />
-      </div>
-      <!-- 右栏:选中条目详情,头部放元信息与操作(键盘选中时也可达) -->
-      <div v-if="selected" class="flex min-w-0 flex-1 flex-col">
-        <header
-          class="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-line pr-2 pl-4"
-        >
-          <span class="truncate text-xs text-muted">{{ detailMeta }}</span>
-          <span class="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              class="flex size-7 items-center justify-center rounded-md hover:bg-surface-muted"
-              :title="copiedId === selected.id ? '已复制' : '仅复制,不粘贴'"
-              @mousedown.prevent
-              @click="copy(selected)"
-            >
-              <IconCheck v-if="copiedId === selected.id" class="size-4 text-content-secondary" />
-              <IconCopy v-else class="size-4 text-muted" />
-            </button>
-            <button
-              type="button"
-              class="flex size-7 items-center justify-center rounded-md hover:bg-surface-muted"
-              title="删除这条记录"
-              @mousedown.prevent
-              @click="remove(selected)"
-            >
-              <IconTrash2 class="size-4 text-muted" />
-            </button>
-          </span>
-        </header>
-        <div class="min-h-0 flex-1 overflow-y-auto p-4">
-          <p
-            class="cursor-text text-sm wrap-break-word whitespace-pre-wrap text-content select-text"
-          >
-            {{ detailText }}
-          </p>
-          <p v-if="detailTruncated" class="mt-3 text-xs text-muted">
-            内容过长,仅显示前 {{ detailText.length }} 字符
-          </p>
+        <div class="flex size-12 items-center justify-center rounded-2xl bg-surface-muted">
+          <component :is="emptyIcon" class="size-5 text-muted" />
         </div>
+        <p class="text-sm text-content-secondary">{{ emptyHint }}</p>
       </div>
-    </template>
+      <template v-else>
+        <!-- 左栏:列表(单行预览),滚动到底分页加载 -->
+        <div
+          ref="listEl"
+          class="flex w-2/5 shrink-0 flex-col overflow-y-auto border-r border-line p-2"
+          @scroll="handleScroll"
+        >
+          <ClipboardListItem
+            v-for="(item, index) in items"
+            :key="item.id"
+            :item="item"
+            :selected="index === selectedIndex"
+            @activate="paste(item)"
+            @select="select(index)"
+          />
+        </div>
+        <!-- 右栏:选中条目详情 -->
+        <ClipboardDetailPane
+          v-if="selected"
+          :item="selected"
+          :copied="copiedId === selected.id"
+          @copy="copy(selected)"
+          @remove="remove(selected)"
+          @toggle-favorite="toggleFavorite(selected)"
+        />
+      </template>
+    </div>
   </div>
 </template>

@@ -40,6 +40,7 @@ pub fn run() {
             commands::clipboard::paste_clipboard_item,
             commands::clipboard::copy_clipboard_item,
             commands::clipboard::delete_clipboard_item,
+            commands::clipboard::set_clipboard_favorite,
         ])
         .build(tauri::generate_context!())
         .expect("启动应用失败")

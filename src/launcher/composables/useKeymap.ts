@@ -2,8 +2,10 @@ import { computed, onUnmounted, ref } from "vue";
 
 /** 一条快捷键定义:按键、页脚文案与回调绑定在同一处,事件分发与页脚展示都由它派生 */
 export interface KeyBinding {
-  /** 绑定的按键(KeyboardEvent.key 值,如 "ArrowUp" / "Enter" / "Delete"),页脚键帽由此推导 */
+  /** 绑定的按键(KeyboardEvent.key 值,如 "ArrowUp" / "Enter" / "d"),页脚键帽由此推导 */
   keys: string[];
+  /** 需要按住 Ctrl 才触发;缺省(false)要求不带任何修饰键 */
+  ctrl?: boolean;
   /** 页脚上的动作说明(如 "选择"、"粘贴") */
   label: string;
   /** 命中任一按键时的回调;一条绑定多个键需要分流时读 event.key */
@@ -29,6 +31,11 @@ const KEY_LABELS: Record<string, string> = {
   Escape: "Esc",
 };
 
+/** 单个按键的键帽标签:映射表优先,单字符按键(字母)大写展示,其余原样 */
+function keyLabel(key: string): string {
+  return KEY_LABELS[key] ?? (key.length === 1 ? key.toUpperCase() : key);
+}
+
 /** 当前挂载页面登记的快捷键表;null = 无登记 */
 const registered = ref<KeyBinding[] | null>(null);
 
@@ -44,11 +51,27 @@ export function useKeymap(bindings?: KeyBinding[]) {
     registered.value = bindings;
 
     const handleKeydown = (event: KeyboardEvent) => {
-      // 输入法组词与修饰键组合(如全局快捷键 Alt+Enter、Shift+←→ 选文本)不当作页面快捷键
-      if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+      // Tab 的浏览器默认行为是焦点巡航,会把焦点从搜索框带走;启动器里焦点应常驻搜索框,
+      // 无论当前页面有没有登记 Tab 绑定都先挡掉默认行为(含 Shift+Tab 反向巡航)
+      if (
+        !event.isComposing &&
+        event.key === "Tab" &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        event.preventDefault();
+      }
+      // 输入法组词与 Alt / Meta / Shift 组合(如全局快捷键 Alt+Enter、Shift+←→ 选文本)不当作页面快捷键;
+      // Ctrl 组合仅在绑定显式声明 ctrl 时接管,未登记的组合(如 Ctrl+C/V/A)照常落入输入框
+      if (event.isComposing || event.altKey || event.metaKey || event.shiftKey) {
         return;
       }
-      const binding = bindings.find((b) => b.keys.includes(event.key));
+      const binding = bindings.find(
+        (b) =>
+          (b.ctrl ?? false) === event.ctrlKey &&
+          b.keys.some((key) => key.toLowerCase() === event.key.toLowerCase()),
+      );
       if (binding) {
         // 绑定即接管:挡掉输入框的默认行为(光标跳行首尾、前向删字);未绑定的键正常落入输入框
         event.preventDefault();
@@ -66,10 +89,10 @@ export function useKeymap(bindings?: KeyBinding[]) {
     });
   }
 
-  /** 页脚提示:按登记顺序把按键换成键帽标签 */
+  /** 页脚提示:按登记顺序把按键换成键帽标签,Ctrl 组合前置 Ctrl 键帽 */
   const hints = computed<FooterHint[]>(() =>
     (registered.value ?? []).map((binding) => ({
-      keys: binding.keys.map((key) => KEY_LABELS[key] ?? key),
+      keys: [...(binding.ctrl ? ["Ctrl"] : []), ...binding.keys.map(keyLabel)],
       label: binding.label,
     })),
   );

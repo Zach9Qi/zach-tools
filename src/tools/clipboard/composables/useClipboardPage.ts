@@ -8,9 +8,11 @@ import {
   listClipboardItems,
   onClipboardNewItem,
   pasteClipboardItem,
+  setClipboardFavorite,
   type ClipboardItem,
   type ClipboardListCursor,
 } from "@/tools/clipboard/lib/api";
+import { KIND_TABS, type ClipboardKindTab } from "@/tools/clipboard/lib/tabs";
 
 /** 单页拉取条数,与后端默认值一致 */
 const PAGE_SIZE = 50;
@@ -18,7 +20,8 @@ const PAGE_SIZE = 50;
 const REFRESH_DEBOUNCE_MS = 120;
 
 /**
- * 剪贴板页状态编排:keyset 分页列表、输入过滤、键盘选中、粘贴/删除、新条目实时合并。
+ * 剪贴板页状态编排:keyset 分页列表、三维正交过滤(搜索词 × 类型 tab × 只看收藏)、
+ * 键盘选中、粘贴/删除/收藏、新条目实时合并。
  * 生命周期与页面组件一致(退出工具页即卸载,重进重拉)。
  * 窗口隐藏期间组件仍存活,新条目靠事件持续合入本地列表;
  * 再次唤起只比对首条 id:对得上就不重置,滚动位置与选中项留着。
@@ -28,11 +31,15 @@ export function useClipboardPage(query: Ref<string>) {
   const items = ref<ClipboardItem[]>([]);
   /** 选中条目 id:列表插入/重排时选中跟随条目本身,不随下标漂移 */
   const selectedId = ref<number | null>(null);
+  /** 当前类型 tab 的 key,与过滤词一样作用于整个列表查询 */
+  const activeKindKey = ref(KIND_TABS[0]?.key ?? "all");
+  /** 「只看收藏」开关,与类型 tab、搜索词正交叠加 */
+  const favoriteOnly = ref(false);
   /** 是否正在请求(重查期间挡住 loadMore) */
   const loading = ref(false);
   /** 后端已无更多数据 */
   const exhausted = ref(false);
-  /** 列表重置(过滤词变化 / 藏窗口时漏了事件)完成计数,页面组件据此把滚动条拉回顶部 */
+  /** 列表重置(过滤词变化 / 切分类 / 藏窗口时漏了事件)完成计数,页面组件据此把滚动条拉回顶部 */
   const refreshTick = ref(0);
   /** 最近一次「仅复制」成功的条目 id,短暂保留用于按钮反馈 */
   const copiedId = ref<number | null>(null);
@@ -43,6 +50,10 @@ export function useClipboardPage(query: Ref<string>) {
   );
   /** 当前选中条目,详情栏据此渲染;列表为空时为 null */
   const selected = computed(() => items.value[selectedIndex.value] ?? null);
+  /** 当前类型 tab 的过滤定义;注册表异常时兜底为不限类型 */
+  const activeKind = computed<ClipboardKindTab>(
+    () => KIND_TABS.find((tab) => tab.key === activeKindKey.value) ?? { key: "all", label: "全部" },
+  );
 
   /**
    * 当前列表版本号。整表重拉(进页、改搜索词、再次唤起)时加一,翻页不加。
@@ -90,6 +101,8 @@ export function useClipboardPage(query: Ref<string>) {
     try {
       const result = await listClipboardItems({
         query: trimmedQuery(),
+        kind: activeKind.value.kind,
+        favoriteOnly: favoriteOnly.value || undefined,
         limit: PAGE_SIZE,
         cursor: options.cursor,
       });
@@ -179,7 +192,16 @@ export function useClipboardPage(query: Ref<string>) {
     }, 1000);
   }
 
-  /** 删除条目;删的是选中项时就近改选同位置的下一条 */
+  /** 从列表移除下标处条目;移除的是选中项时就近改选同位置的下一条 */
+  function dropFromList(index: number) {
+    const [removed] = items.value.splice(index, 1);
+    if (removed && selectedId.value === removed.id) {
+      const fallback = items.value[Math.min(index, items.value.length - 1)];
+      selectedId.value = fallback ? fallback.id : null;
+    }
+  }
+
+  /** 删除条目 */
   async function remove(item: ClipboardItem) {
     try {
       await deleteClipboardItem(item.id);
@@ -188,21 +210,54 @@ export function useClipboardPage(query: Ref<string>) {
       return;
     }
     const index = items.value.findIndex((it) => it.id === item.id);
-    if (index === -1) {
-      return;
-    }
-    items.value.splice(index, 1);
-    if (selectedId.value === item.id) {
-      const fallback = items.value[Math.min(index, items.value.length - 1)];
-      selectedId.value = fallback ? fallback.id : null;
+    if (index !== -1) {
+      dropFromList(index);
     }
   }
 
   /**
-   * 新条目落库(外部复制):无过滤词时直接置顶(重复复制则上浮);
+   * 切换条目收藏状态,成功后本地同步(不重拉):
+   * 一般视图原地更新星标;收藏视图里取消收藏意味着条目离开当前列表,按删除的方式移除。
+   */
+  async function toggleFavorite(item: ClipboardItem) {
+    const favorite = !item.isFavorite;
+    try {
+      await setClipboardFavorite(item.id, favorite);
+    } catch (error) {
+      console.error("收藏操作失败:", error);
+      return;
+    }
+    const index = items.value.findIndex((it) => it.id === item.id);
+    if (index === -1) {
+      return;
+    }
+    if (favoriteOnly.value && !favorite) {
+      dropFromList(index);
+      return;
+    }
+    items.value[index] = { ...item, isFavorite: favorite };
+  }
+
+  /** 条目是否属于当前过滤视图(类型与收藏两个维度;关键字语义留给后端) */
+  function matchesActiveFilters(item: ClipboardItem): boolean {
+    if (activeKind.value.kind && item.kind !== activeKind.value.kind) {
+      return false;
+    }
+    if (favoriteOnly.value && !item.isFavorite) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * 新条目落库(外部复制):不属于当前过滤视图的直接忽略(切换过滤时会整表重拉);
+   * 无过滤词时直接置顶(重复复制则上浮);
    * 有过滤词时不在前端复刻后端的匹配语义,只当失效信号,防抖后整表重查
    */
   function handleNewItem(item: ClipboardItem) {
+    if (!matchesActiveFilters(item)) {
+      return;
+    }
     if (trimmedQuery()) {
       scheduleRefresh();
       return;
@@ -222,12 +277,12 @@ export function useClipboardPage(query: Ref<string>) {
       return;
     }
     const current = selectedIndex.value;
-    const next =
-      current === -1 ? (delta === 1 ? 0 : count - 1) : (current + delta + count) % count;
+    const next = current === -1 ? (delta === 1 ? 0 : count - 1) : (current + delta + count) % count;
     selectedId.value = items.value[next]?.id ?? null;
   }
 
-  // 按键、页脚提示与回调同源登记;←→ 不绑定,留给输入框光标(过滤框改词以退格为主)
+  // 按键、页脚提示与回调同源登记;←→ 不绑定,留给输入框光标(过滤框改词以退格为主)。
+  // Tab 轮切类型只在注册表有多个 tab 时登记(一期只有「全部」,轮切无意义则不出现在页脚)
   useKeymap([
     {
       keys: ["ArrowUp", "ArrowDown"],
@@ -240,6 +295,31 @@ export function useClipboardPage(query: Ref<string>) {
       onPress: () => {
         if (selected.value) {
           void paste(selected.value);
+        }
+      },
+    },
+    ...(KIND_TABS.length > 1
+      ? [
+          {
+            keys: ["Tab"],
+            label: "分类",
+            onPress: () => cycleKind(),
+          },
+        ]
+      : []),
+    {
+      keys: ["f"],
+      ctrl: true,
+      label: "只看收藏",
+      onPress: () => toggleFavoriteFilter(),
+    },
+    {
+      keys: ["d"],
+      ctrl: true,
+      label: "收藏",
+      onPress: () => {
+        if (selected.value) {
+          void toggleFavorite(selected.value);
         }
       },
     },
@@ -261,6 +341,36 @@ export function useClipboardPage(query: Ref<string>) {
     refreshTimer = setTimeout(() => void refreshList("reset"), REFRESH_DEBOUNCE_MS);
   }
   watch(query, scheduleRefresh);
+
+  /** 过滤维度(类型 / 收藏开关)变化后的统一动作:立即整表重拉,在途请求与待发防抖一并作废 */
+  function refreshOnFilterChange() {
+    clearTimeout(refreshTimer);
+    void refreshList("reset");
+  }
+
+  /** 切换类型 tab,保留收藏开关与搜索词叠加过滤 */
+  function selectKind(key: string) {
+    if (activeKindKey.value === key) {
+      return;
+    }
+    activeKindKey.value = key;
+    refreshOnFilterChange();
+  }
+
+  /** Tab 键向右轮切类型(循环) */
+  function cycleKind() {
+    const index = KIND_TABS.findIndex((tab) => tab.key === activeKindKey.value);
+    const next = KIND_TABS[(index + 1) % KIND_TABS.length];
+    if (next) {
+      selectKind(next.key);
+    }
+  }
+
+  /** 开关「只看收藏」,与类型 tab、搜索词叠加过滤 */
+  function toggleFavoriteFilter() {
+    favoriteOnly.value = !favoriteOnly.value;
+    refreshOnFilterChange();
+  }
 
   let unlisteners: UnlistenFn[] = [];
 
@@ -290,10 +400,16 @@ export function useClipboardPage(query: Ref<string>) {
     loading,
     exhausted,
     refreshTick,
+    kindTabs: KIND_TABS,
+    activeKind,
+    favoriteOnly,
+    selectKind,
+    toggleFavoriteFilter,
     select,
     paste,
     copy,
     remove,
+    toggleFavorite,
     loadMore,
   };
 }

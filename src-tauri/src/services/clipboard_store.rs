@@ -16,7 +16,7 @@ pub const MAX_TEXT_BYTES: usize = 10 * 1024 * 1024;
 pub const PREVIEW_MAX_CHARS: i64 = 5000;
 
 /// 剪贴板内容类型
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum ClipboardKind {
@@ -68,6 +68,17 @@ pub struct ListCursor {
     pub last_used_at: i64,
     /// 最后一行的 id，同毫秒时间戳的决胜键
     pub id: i64,
+}
+
+/// 列表过滤条件：分页之外的全部筛选维度，各维度可叠加（AND 语义）
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ListFilter<'a> {
+    /// 关键字，对文本内容做包含匹配；None 或空白不过滤
+    pub keyword: Option<&'a str>,
+    /// 限定内容类型；None 不限
+    pub kind: Option<ClipboardKind>,
+    /// 只看收藏
+    pub favorite_only: bool,
 }
 
 /// 预览投影的前半段：接一个绑定参数（预览字符数 [`PREVIEW_MAX_CHARS`]）
@@ -137,15 +148,15 @@ async fn fetch_preview(pool: &SqlitePool, id: i64) -> Result<Option<ClipboardIte
 }
 
 /// 按 (last_used_at DESC, id DESC) 全序分页查询。
-/// query 非空时对文本内容做包含匹配（image / files 条目自然被排除在关键字搜索之外）；
-/// cursor 非空时返回严格晚于该锚点的下一页（keyset 翻页）。
+/// filter 各维度可叠加：关键字对文本内容做包含匹配（image / files 条目自然被排除在关键字搜索之外）、
+/// 内容类型、只看收藏；cursor 非空时返回严格晚于该锚点的下一页（keyset 翻页）。
 pub async fn list(
     pool: &SqlitePool,
-    query: Option<&str>,
+    filter: ListFilter<'_>,
     limit: i64,
     cursor: Option<ListCursor>,
 ) -> Result<Vec<ClipboardItem>, sqlx::Error> {
-    let keyword = query.map(str::trim).filter(|kw| !kw.is_empty());
+    let keyword = filter.keyword.map(str::trim).filter(|kw| !kw.is_empty());
 
     let mut builder = preview_query();
     let mut prefix = " WHERE ";
@@ -153,6 +164,14 @@ pub async fn list(
         builder.push(prefix).push("text_content LIKE ");
         builder.push_bind(format!("%{}%", escape_like(keyword)));
         builder.push(r" ESCAPE '\'");
+        prefix = " AND ";
+    }
+    if let Some(kind) = filter.kind {
+        builder.push(prefix).push("kind = ").push_bind(kind);
+        prefix = " AND ";
+    }
+    if filter.favorite_only {
+        builder.push(prefix).push("is_favorite = 1");
         prefix = " AND ";
     }
     if let Some(cursor) = cursor {
@@ -191,6 +210,16 @@ pub async fn touch(pool: &SqlitePool, id: i64) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await?;
     Ok(())
+}
+
+/// 设置条目收藏状态，返回是否确有该条目。收藏项不参与容量清理。
+pub async fn set_favorite(pool: &SqlitePool, id: i64, favorite: bool) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("UPDATE clipboard_items SET is_favorite = ?1 WHERE id = ?2")
+        .bind(favorite)
+        .bind(id)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected() > 0)
 }
 
 /// 删除单条记录，返回是否确实删掉了。
@@ -279,7 +308,9 @@ mod tests {
         assert_eq!(first.id, second.id);
         assert!(second.last_used_at > 1);
 
-        let all = list(&pool, None, 10, None).await.expect("查询失败");
+        let all = list(&pool, ListFilter::default(), 10, None)
+            .await
+            .expect("查询失败");
         assert_eq!(all.len(), 1);
     }
 
@@ -300,7 +331,9 @@ mod tests {
 
         prune(&pool, 1).await.expect("清理失败");
 
-        let remaining = list(&pool, None, 10, None).await.expect("查询失败");
+        let remaining = list(&pool, ListFilter::default(), 10, None)
+            .await
+            .expect("查询失败");
         // 收藏的 item-0 + 最新的非收藏 item-2
         assert_eq!(remaining.len(), 2);
         assert!(remaining
@@ -320,7 +353,11 @@ mod tests {
                 .expect("入库失败");
         }
 
-        let hits = list(&pool, Some("100%"), 10, None).await.expect("查询失败");
+        let filter = ListFilter {
+            keyword: Some("100%"),
+            ..ListFilter::default()
+        };
+        let hits = list(&pool, filter, 10, None).await.expect("查询失败");
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].text_preview.as_deref(), Some("progress 100%"));
     }
@@ -336,7 +373,9 @@ mod tests {
         }
 
         // 第一页：[d, c]
-        let page1 = list(&pool, None, 2, None).await.expect("查询失败");
+        let page1 = list(&pool, ListFilter::default(), 2, None)
+            .await
+            .expect("查询失败");
         let texts: Vec<_> = page1.iter().map(|it| it.text_preview.as_deref()).collect();
         assert_eq!(texts, [Some("d"), Some("c")]);
 
@@ -347,7 +386,9 @@ mod tests {
             last_used_at: page1[1].last_used_at,
             id: page1[1].id,
         };
-        let page2 = list(&pool, None, 2, Some(cursor)).await.expect("查询失败");
+        let page2 = list(&pool, ListFilter::default(), 2, Some(cursor))
+            .await
+            .expect("查询失败");
         let texts: Vec<_> = page2.iter().map(|it| it.text_preview.as_deref()).collect();
         assert_eq!(texts, [Some("b"), Some("a")]);
     }
@@ -363,15 +404,84 @@ mod tests {
         }
 
         // 同毫秒并列按 id 倒序决胜：后插入的 tie-2 在前，且跨页不丢不重
-        let page1 = list(&pool, None, 1, None).await.expect("查询失败");
+        let page1 = list(&pool, ListFilter::default(), 1, None)
+            .await
+            .expect("查询失败");
         assert_eq!(page1[0].text_preview.as_deref(), Some("tie-2"));
 
         let cursor = ListCursor {
             last_used_at: page1[0].last_used_at,
             id: page1[0].id,
         };
-        let page2 = list(&pool, None, 1, Some(cursor)).await.expect("查询失败");
+        let page2 = list(&pool, ListFilter::default(), 1, Some(cursor))
+            .await
+            .expect("查询失败");
         assert_eq!(page2[0].text_preview.as_deref(), Some("tie-1"));
+    }
+
+    #[tokio::test]
+    async fn list_filters_by_kind_and_favorite() {
+        let pool = memory_pool().await;
+        for text in ["alpha", "beta"] {
+            upsert_text(&pool, text, &hash_text(text))
+                .await
+                .expect("入库失败");
+        }
+        // 当前只有文本入库路径，手动插一条 image 行验证 kind 过滤
+        sqlx::query(
+            r"
+            INSERT INTO clipboard_items (kind, image_path, content_hash, created_at, last_used_at)
+            VALUES ('image', 'shot.png', 'image-hash', 1, 1)
+            ",
+        )
+        .execute(&pool)
+        .await
+        .expect("插入 image 行失败");
+
+        let text_only = ListFilter {
+            kind: Some(ClipboardKind::Text),
+            ..ListFilter::default()
+        };
+        let texts = list(&pool, text_only, 10, None).await.expect("查询失败");
+        assert_eq!(texts.len(), 2);
+        assert!(texts.iter().all(|item| item.kind == ClipboardKind::Text));
+
+        let image_only = ListFilter {
+            kind: Some(ClipboardKind::Image),
+            ..ListFilter::default()
+        };
+        let images = list(&pool, image_only, 10, None).await.expect("查询失败");
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].image_path.as_deref(), Some("shot.png"));
+
+        // 收藏 alpha 后，favorite_only 只回收藏条目
+        let alpha_id = texts
+            .iter()
+            .find(|item| item.text_preview.as_deref() == Some("alpha"))
+            .expect("应有 alpha")
+            .id;
+        assert!(set_favorite(&pool, alpha_id, true).await.expect("收藏失败"));
+
+        let favorite_only = ListFilter {
+            favorite_only: true,
+            ..ListFilter::default()
+        };
+        let favorites = list(&pool, favorite_only, 10, None)
+            .await
+            .expect("查询失败");
+        assert_eq!(favorites.len(), 1);
+        assert_eq!(favorites[0].text_preview.as_deref(), Some("alpha"));
+        assert!(favorites[0].is_favorite);
+
+        // 取消收藏后列表清空；不存在的 id 返回 false
+        assert!(set_favorite(&pool, alpha_id, false)
+            .await
+            .expect("取消收藏失败"));
+        let favorites = list(&pool, favorite_only, 10, None)
+            .await
+            .expect("查询失败");
+        assert!(favorites.is_empty());
+        assert!(!set_favorite(&pool, 9999, true).await.expect("调用失败"));
     }
 
     #[tokio::test]
@@ -382,7 +492,9 @@ mod tests {
             .await
             .expect("入库失败");
 
-        let items = list(&pool, None, 10, None).await.expect("查询失败");
+        let items = list(&pool, ListFilter::default(), 10, None)
+            .await
+            .expect("查询失败");
         let item = &items[0];
         let preview = item.text_preview.as_deref().expect("应有文本预览");
         assert_eq!(preview.chars().count(), PREVIEW_MAX_CHARS as usize);
