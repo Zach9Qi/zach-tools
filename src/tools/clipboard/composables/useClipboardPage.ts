@@ -1,7 +1,7 @@
 import { computed, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { useKeymap } from "@/launcher/composables/useKeymap";
-import { onLauncherOpen } from "@/launcher/lib/window";
+import { useKeymap } from "@/composables/useKeymap";
+import { onLauncherOpen } from "@/lib/window";
 import {
   copyClipboardItem,
   deleteClipboardItem,

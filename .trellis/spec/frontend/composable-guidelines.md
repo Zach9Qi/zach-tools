@@ -7,8 +7,8 @@
 
 ## 归属与分层
 
-- composable 跟功能走:`useLauncher` / `useResults` 在 `src/launcher/composables/`,`useClipboardPage` 在 `src/tools/clipboard/composables/`;不存在根级 `src/composables/`
-- **composable 不直接 `invoke` / `listen`**,只调用所属模块 `lib/` 的封装函数(`useClipboardPage` → `tools/clipboard/lib/api.ts`)
+- 单模块私有的 composable 跟功能走:`useLauncher` / `useResults` 在 `src/launcher/composables/`,`useClipboardPage` 在 `src/tools/clipboard/composables/`;外壳与工具共用的放根级 `src/composables/`(如 `useKeymap`),归属规则见[目录结构](./directory-structure.md)的依赖方向一节
+- **composable 不直接 `invoke` / `listen`**,只调用 `lib/` 的封装函数(`useClipboardPage` → `tools/clipboard/lib/api.ts` 与 `src/lib/window.ts`)
 - 无响应式、无生命周期的纯逻辑(时间格式化、tab 定义、输入判断)是 `lib/` 里的普通函数,不要包成 composable(`tools/clipboard/lib/time.ts`、`tabs.ts`)
 
 ---
@@ -57,7 +57,7 @@ const activeModule = ref<ViewToolModule | null>(null);
 
 ## 快捷键:一处定义,两处派生
 
-页面快捷键统一经 `useKeymap`(`src/launcher/composables/useKeymap.ts`)登记:一条 `KeyBinding` 同时驱动 keydown 分发与页脚键帽提示,结构上杜绝「按键行为与页脚文案漂移」。
+页面快捷键统一经 `useKeymap`(`src/composables/useKeymap.ts`,共享层,外壳与工具页都可用)登记:一条 `KeyBinding` 同时驱动 keydown 分发与页脚键帽提示,结构上杜绝「按键行为与页脚文案漂移」。
 
 - 页面级 composable 传 bindings 登记(`useClipboardPage`、`useRowNavigation`);`LauncherFooter` 无参调用只读提示
 - Esc 归外壳(`useLauncher`)分层处理,不在页面登记

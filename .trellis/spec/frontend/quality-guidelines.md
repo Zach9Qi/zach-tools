@@ -22,7 +22,7 @@
 - 注释一律中文,解释「为什么」与约束,不复述代码;好的参照:`useKeymap.ts` 对 Tab 拦截、输入法组词、Ctrl 组合放行的三段注释
 - 导出的接口、类型、函数、常量必须有文档注释;跨端结构体逐字段注释(见[类型安全](./type-safety.md))
 - template 里的非显然布局决策用 HTML 注释写在结构旁(`LauncherPanel.vue` 对透明边缘、`max-h` 单一定义处的注释)
-- 魔法数字提为带注释的命名常量:`PAGE_SIZE` / `REFRESH_DEBOUNCE_MS`(`useClipboardPage.ts`)、`WINDOW_WIDTH`(`launcher/lib/window.ts`)、`ROW_CAPACITY`(`useResults.ts`)
+- 魔法数字提为带注释的命名常量:`PAGE_SIZE` / `REFRESH_DEBOUNCE_MS`(`useClipboardPage.ts`)、`WINDOW_WIDTH`(`src/lib/window.ts`)、`ROW_CAPACITY`(`useResults.ts`)
 
 ---
 
@@ -62,7 +62,8 @@ async function paste(item: ClipboardItem) {
 | 创建 `tailwind.config.js` | `src/index.css` 的 `@theme` |
 | 引入 lucide 之外的图标库 | `~icons/lucide/*` |
 | `any`、滥用 `!` 断言 | 泛型 / 收窄 / 早返回 |
-| 新建根级 `src/components/`、`src/composables/` 堆放处 | 归属到功能模块内 |
+| tools 导入 `@/launcher/*`(反向依赖) | 外壳能力从共享层(`src/lib/`、`src/composables/`)获取 |
+| 单模块私有代码放进根级共享层 | 共享层门槛:≥2 个功能模块真实消费 |
 
 ---
 

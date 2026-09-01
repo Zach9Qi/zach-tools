@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "校验命令与禁止模式清单,验收时逐项对照"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "前端规范入口,校验路径引用一致性"}

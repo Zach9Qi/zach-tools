@@ -34,7 +34,7 @@
 ## 事件(后端 → 前端)
 
 - 事件名 kebab-case,定义为模块顶部常量,不写裸字符串:`EVENT_OPEN = "launcher-open"`(`launcher_window.rs`)、`EVENT_NEW_ITEM = "clipboard-new-item"`(`clipboard_ingest.rs`)
-- 用 `app.emit(EVENT, payload)` 广播;前端在对应模块 `lib/` 里有同名监听封装(`launcher/lib/window.ts`、`tools/clipboard/lib/api.ts`),新增事件两侧同时加
+- 用 `app.emit(EVENT, payload)` 广播;前端在对应的 `lib/` 封装里有同名监听函数(窗口事件 → `src/lib/window.ts`,剪贴板 → `tools/clipboard/lib/api.ts`),新增事件两侧同时加
 - 事件语义要考虑「前端可能错过事件」:剪贴板重复复制时后端以同一 id 重发条目,前端按 id 去重;窗口唤起时前端做首条比对补偿(见 frontend spec 状态管理篇)
 
 ---

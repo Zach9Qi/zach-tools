@@ -1,5 +1,5 @@
 import { computed, ref, type Ref } from "vue";
-import { useKeymap } from "@/launcher/composables/useKeymap";
+import { useKeymap } from "@/composables/useKeymap";
 
 /** useRowNavigation 配置 */
 export interface UseRowNavigationOptions<T> {

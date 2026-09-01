@@ -11,11 +11,11 @@ src/
 ├── App.vue              # 只做布局与顶层挂载,不含业务(全文 9 行)
 ├── main.ts              # createApp 入口
 ├── index.css            # Tailwind 入口 + @theme 语义色板(全局唯一样式文件)
-├── lib/                 # 跨模块共享代码;当前只有 runtime.ts(isTauriRuntime)
+├── composables/         # 跨模块共享 composable:useKeymap(快捷键登记,外壳与工具页共用)
+├── lib/                 # 跨模块共享普通代码:runtime.ts(isTauriRuntime)、window.ts(启动器窗口 IPC 封装)
 ├── launcher/            # 启动器外壳与主页
 │   ├── components/      # LauncherPanel / ResultsPanel / SearchInput / ToolTile ...
-│   ├── composables/     # useLauncher / useResults / useKeymap / useRowNavigation ...
-│   └── lib/             # window.ts(启动器窗口相关 IPC 封装)
+│   └── composables/     # useLauncher / useResults / useToolView / useRowNavigation ...
 └── tools/               # 工具体系
     ├── types.ts         # ToolItem / ToolModule 等共享契约
     ├── registry.ts      # 工具注册表(catalog + moduleOf)
@@ -40,9 +40,22 @@ src/
 | `composables/` | 有响应式状态或生命周期的 `useXxx` | `src/tools/clipboard/composables/useClipboardPage.ts` |
 | `lib/` | 无响应式的普通函数:IPC 封装、纯逻辑、常量表 | `src/tools/clipboard/lib/api.ts`、`time.ts`、`tabs.ts` |
 
-**IPC 封装必须落在所属模块的 `lib/`**:启动器窗口 → `launcher/lib/window.ts`,剪贴板 → `tools/clipboard/lib/api.ts`。组件与 composable 里不出现字符串命令名 / 事件名。
+**IPC 封装必须落在 `lib/`,归属看消费方**:单模块私有的放模块内(剪贴板 → `tools/clipboard/lib/api.ts`);外壳与工具都要消费的放根级共享层(启动器窗口 → `src/lib/window.ts`)。组件与 composable 里不出现字符串命令名 / 事件名。
 
-**根级 `src/lib/`、`src/components/`、`src/composables/` 不是默认堆放处**:只放既不属于 launcher 也不属于任何工具的跨模块代码。当前只存在 `src/lib/runtime.ts`;后两个目录不存在,没有真实需要就不要创建。
+**根级共享层(`src/lib/`、`src/composables/`)不是默认堆放处**:进入门槛是「≥2 个功能模块真实消费」。现有居民:`src/lib/runtime.ts`、`src/lib/window.ts`、`src/composables/useKeymap.ts`。单模块私有的照旧放模块内;`src/components/` 目前不存在,没有真实需要就不要创建。
+
+---
+
+## 依赖方向(硬规则)
+
+只有一个方向:**launcher → tools → 共享层(`src/lib/`、`src/composables/`)**。
+
+- launcher 可 import `@/tools/*`(仅经 `registry` 查表消费)与共享层
+- **tools 禁止 import `@/launcher/*`**:工具需要的外壳能力(快捷键登记 `useKeymap`、窗口事件 `onLauncherOpen` 等)一律来自共享层
+- 共享层不 import launcher 与 tools
+- 新增「外壳与工具都要用」的能力时,直接落在共享层,不要让 tools 反向伸进外壳内部
+
+> 由来:useKeymap 与 window.ts 曾在 launcher 内部,clipboard 反向深导入形成层级环,任务 `09-01-decouple-launcher-tools` 将其上提修复,此后保持单向。
 
 ---
 

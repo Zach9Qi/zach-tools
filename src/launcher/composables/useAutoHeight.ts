@@ -1,5 +1,5 @@
 import { onMounted, onUnmounted, type Ref } from "vue";
-import { resizeLauncherToContent } from "@/launcher/lib/window";
+import { resizeLauncherToContent } from "@/lib/window";
 
 /**
  * 观察页面根元素(面板 + 阴影边距)的高度,变化时把窗口高度贴上去(uTools 式自适应)。

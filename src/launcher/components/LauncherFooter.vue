@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { useKeymap } from "@/composables/useKeymap";
 import KeyboardKey from "@/launcher/components/KeyboardKey.vue";
-import { useKeymap } from "@/launcher/composables/useKeymap";
 import { useToolView } from "@/launcher/composables/useToolView";
 
 const { activeModule } = useToolView();

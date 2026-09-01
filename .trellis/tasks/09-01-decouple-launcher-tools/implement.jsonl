@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "目录归属与模块组织的现行规则,本次改动的主要规范落点"}
+{"file": ".trellis/spec/frontend/composable-guidelines.md", "reason": "composable 归属与 useKeymap 快捷键登记约定"}

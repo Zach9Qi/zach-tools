@@ -36,10 +36,11 @@
 
 ## 一分钟速览(写任何前端代码前默读)
 
-- 代码按**功能模块**组织:启动器外壳在 `src/launcher/`,每个工具在 `src/tools/<id>/`;`src/lib/` 只放真正跨模块的代码
+- 代码按**功能模块**组织:启动器外壳在 `src/launcher/`,每个工具在 `src/tools/<id>/`;跨模块共享代码在根级 `src/lib/`、`src/composables/`
+- 依赖方向单向:launcher → tools → 共享层,**tools 禁止 import `@/launcher/*`**
 - 组件一律 `<script setup lang="ts">`,props / emits 用类型式声明,禁止 `any`
 - 样式只写 Tailwind 工具类,颜色用 `src/index.css` 定义的语义 token(`bg-surface`、`text-muted` 等)
-- 与 Tauri 的 `invoke` / `listen` 全部封装在所属模块 `lib/` 里,并用 `isTauriRuntime()` 降级,保证纯浏览器(`bun run dev` 直接打开)也能预览
+- 与 Tauri 的 `invoke` / `listen` 全部封装在 `lib/` 里(单模块私有的在模块内,跨模块的在 `src/lib/`),并用 `isTauriRuntime()` 降级,保证纯浏览器(`bun run dev` 直接打开)也能预览
 - 注释用中文、写「为什么」;导出的类型、字段、函数都要有文档注释
 
 ---
