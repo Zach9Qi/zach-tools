@@ -54,6 +54,7 @@ src/
 - **tools 禁止 import `@/launcher/*`**:工具需要的外壳能力(快捷键登记 `useKeymap`、窗口事件 `onLauncherOpen` 等)一律来自共享层
 - 共享层不 import launcher 与 tools
 - 新增「外壳与工具都要用」的能力时,直接落在共享层,不要让 tools 反向伸进外壳内部
+- 该规则已由 oxlint 强制:`.oxlintrc.json` 对 `src/tools/**` 的 overrides 配置了 `no-restricted-imports`,违规导入在 `bun run lint` 直接报错
 
 > 由来:useKeymap 与 window.ts 曾在 launcher 内部,clipboard 反向深导入形成层级环,任务 `09-01-decouple-launcher-tools` 将其上提修复,此后保持单向。
 

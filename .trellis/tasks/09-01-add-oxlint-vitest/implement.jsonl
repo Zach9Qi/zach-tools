@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "校验命令、测试现状与禁止模式的现行定义,本任务的主要规范落点"}
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "依赖方向硬规则,lint 边界强制需与其一致"}

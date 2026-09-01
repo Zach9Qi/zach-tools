@@ -8,12 +8,16 @@
 
 | 时机 | 命令 | 说明 |
 |------|------|------|
+| 提交前(必须) | `bun run lint` | oxlint,含依赖边界强制(见下) |
+| 提交前(必须) | `bun run test` | Vitest 全量用例 |
 | 提交前(必须) | `bun run build` | `vue-tsc --noEmit` 类型门禁 + vite 构建 |
 | 提交前(必须) | `bun run format` | Prettier 格式化 `src/`(printWidth 100,tailwind 插件自动排类名) |
 | 联调 | `bun run tauri dev` | 完整桌面运行时 |
 | 纯 UI 预览 | `bun run dev` | 浏览器预览;IPC 层经 `isTauriRuntime()` 全部降级为 no-op,必须保持可打开 |
 
-**测试现状(如实记录)**:前端尚未配置测试框架(无 vitest / jest)。当前的补偿手段是:纯逻辑尽量下沉到 `lib/` 的无依赖纯函数(`tools/clipboard/lib/time.ts` 的 `formatRelativeTime` 带 `now` 参数即为可测设计),复杂状态机集中在 composable 且注释完备。引入测试框架是独立决策,不要在业务任务里顺手加。
+**Lint(oxlint,配置在 `.oxlintrc.json`)**:检查 TS 与 SFC 的 script 块;`src/tools/**` 的 overrides 用 `no-restricted-imports` 强制「tools 禁止导入 `@/launcher/**`」的依赖方向(gitignore 风格通配,`**` 才覆盖任意深度)。已知缺口(如实记录,知情接受):Vue `<template>` 内部不被 lint(oxlint 上游限制,vue-tsc strict 可兜住模板类型错误,`:key`、`v-html` 等纪律靠评审);类型感知模式(tsgolint)要求 TS 7,项目在 TS ~5.6 暂不启用,故 `no-floating-promises` 缺位,「故意不等待的 Promise 用 `void` 标记」仍靠约定。
+
+**测试(Vitest,配置在根级 `vitest.config.ts`)**:测试文件与被测源码同目录、命名 `xxx.test.ts`、用 `@/` 别名导入;配置独立于 `vite.config.ts`,不牵动 Tauri dev 设置。当前覆盖 `lib/` 纯函数(`tools/clipboard/lib/time.test.ts`、`tools/match.test.ts`),新增纯函数逻辑应同步补用例;纯逻辑尽量下沉为无依赖纯函数(`formatRelativeTime` 带 `now` 参数即为可测设计)。组件测试(@vue/test-utils)尚未引入,是独立决策。
 
 ---
 
@@ -62,14 +66,14 @@ async function paste(item: ClipboardItem) {
 | 创建 `tailwind.config.js` | `src/index.css` 的 `@theme` |
 | 引入 lucide 之外的图标库 | `~icons/lucide/*` |
 | `any`、滥用 `!` 断言 | 泛型 / 收窄 / 早返回 |
-| tools 导入 `@/launcher/*`(反向依赖) | 外壳能力从共享层(`src/lib/`、`src/composables/`)获取 |
+| tools 导入 `@/launcher/*`(反向依赖,oxlint 强制报错) | 外壳能力从共享层(`src/lib/`、`src/composables/`)获取 |
 | 单模块私有代码放进根级共享层 | 共享层门槛:≥2 个功能模块真实消费 |
 
 ---
 
 ## 提交前自查
 
-1. `bun run format && bun run build` 通过
+1. `bun run format && bun run lint && bun run test && bun run build` 通过
 2. 浏览器预览(`bun run dev`)不白屏、无未捕获异常
 3. 新增导出都有中文文档注释;跨端类型两侧(`lib/api.ts` ↔ Rust 结构体)已同步
 4. 对照上表扫一遍禁止模式

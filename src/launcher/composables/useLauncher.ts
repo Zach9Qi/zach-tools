@@ -42,12 +42,12 @@ export function useLauncher(options: UseLauncherOptions = {}) {
 
   onMounted(async () => {
     window.addEventListener("keydown", handleKeydown);
-    unlisteners = await Promise.all([
+    unlisteners = [
       // 唤起时不清搜索词：保留上次现场，搜索框聚焦时全选，输入即覆盖
-      onLauncherOpen(() => {
+      await onLauncherOpen(() => {
         options.onOpen?.();
       }),
-    ]);
+    ];
   });
 
   onUnmounted(() => {

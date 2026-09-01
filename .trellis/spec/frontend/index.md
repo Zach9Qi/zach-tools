@@ -15,6 +15,8 @@
 | 图标 | unplugin-icons + lucide | `~icons/lucide/xxx` 按需编译成组件 |
 | 构建 | Vite 6 + bun | `bun run dev` / `bun run build` |
 | 状态 | 组合式函数(模块级 ref) | 未引入 Pinia,见[状态管理](./state-management.md) |
+| Lint | oxlint(`.oxlintrc.json`) | 含依赖边界强制;模板规则与 typeAware 的已知缺口见[质量规范](./quality-guidelines.md) |
+| 测试 | Vitest(`vitest.config.ts`) | 纯函数用例与源码同目录(`xxx.test.ts`) |
 | 桌面运行时 | Tauri 2(@tauri-apps/api) | IPC 封装约定见[目录结构](./directory-structure.md)与[组合式函数规范](./composable-guidelines.md) |
 
 ---
@@ -42,6 +44,8 @@
 - 样式只写 Tailwind 工具类,颜色用 `src/index.css` 定义的语义 token(`bg-surface`、`text-muted` 等)
 - 与 Tauri 的 `invoke` / `listen` 全部封装在 `lib/` 里(单模块私有的在模块内,跨模块的在 `src/lib/`),并用 `isTauriRuntime()` 降级,保证纯浏览器(`bun run dev` 直接打开)也能预览
 - 注释用中文、写「为什么」;导出的类型、字段、函数都要有文档注释
+
+提交前:`bun run format && bun run lint && bun run test && bun run build` 全过。
 
 ---
 
