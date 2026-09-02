@@ -46,7 +46,7 @@ feat(launcher): 支持 alt+enter 全局快捷键唤起
 
 ## 版本号与发布
 
-**版本号有三处源文件,必须同值**:`package.json`、`src-tauri/Cargo.toml`(`[package]` 段)、`src-tauri/tauri.conf.json`;`src-tauri/Cargo.lock` 里本 crate 的条目随 `Cargo.toml` 刷新。**不要手改任何一处**,一律走脚本:
+**版本号有三处源文件,必须同值**:`package.json`、`src-tauri/Cargo.toml`(`[package]` 段)、`src-tauri/tauri.conf.json5`;`src-tauri/Cargo.lock` 里本 crate 的条目随 `Cargo.toml` 刷新。**不要手改任何一处**,一律走脚本:
 
 ```bash
 bun run release <x.y.z | patch | minor | major> [--dry-run] [--no-push]   # scripts/release.ts
@@ -57,11 +57,13 @@ bun run version:check [vX.Y.Z]                                             # scr
 - 安全检查全部通过才动文件,任一失败中文报错、退出码 1:工作区脏 / 不在 `main` / 本地与 `origin/main` 不同步 / tag 已存在(本地或远端)
 - `--dry-run` 只跑只读 git 查询并打印计划,不写文件;检查未通过时同样退出码 1,便于看到「真跑会被拒」
 - 版本格式 `x.y.z` 或带 `-` 预发布后缀(`0.2.0-beta.1`);带 `-` 的 tag 会被 Release 自动标为 prerelease;`patch/minor/major` 基于 `package.json` 当前值递增(预发布后缀先丢弃)
-- 写入用**文本正则替换**而非解析后重序列化:`tauri.conf.json` 是带中文注释的 JSON5,`JSON.parse` 会丢注释;`Cargo.toml` 只在 `[package]` 段内替换,不误伤依赖声明
+- 写入用**文本正则替换**而非解析后重序列化:`tauri.conf.json5` 带中文注释,`JSON.parse` 会丢注释;`Cargo.toml` 只在 `[package]` 段内替换,不误伤依赖声明
 
 > **Gotcha**:`git push --follow-tags` 只推送**附注** tag,轻量 tag(`git tag vX`)会被落下、Actions 不触发。手动打 tag 时必须 `git tag -a vX -m vX`。
 >
 > **Gotcha**:`cargo metadata --no-deps` 不会写 `Cargo.lock`;去掉 `--no-deps` 又会在离线时因平台专属依赖(如 `android_log-sys`)失败。刷新本 crate 版本用 `cargo update --workspace --offline`,只重解析工作区成员、不下载不编译。
+>
+> **Gotcha**:`tauri-apps/tauri-action` 对 `tauri.conf.json` 走 `JSON.parse`,带 `//` 注释会报 `Couldn't locate or parse tauri config`(日志里那条 `--config` 解析失败是同一函数的误导性文案,可忽略)。配置必须用 `tauri.conf.json5`,CLI 与 action 才会按 JSON5 读。不要为迁就 action 删注释。
 
 ## CI 与工作流约定
 

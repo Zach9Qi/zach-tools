@@ -6,7 +6,7 @@ use crate::platform;
 use crate::services::tray;
 use crate::state::AppState;
 
-/// 主窗口 label（与 tauri.conf.json 保持一致）
+/// 主窗口 label（与 tauri.conf.json5 保持一致）
 const MAIN_WINDOW: &str = "main";
 /// 窗口唤起事件
 const EVENT_OPEN: &str = "launcher-open";

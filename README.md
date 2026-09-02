@@ -25,7 +25,7 @@ bun run release 0.2.0-beta.1         # 带 `-` 的预发布版本,Release 会自
 脚本会依次:
 
 1. 安全检查(任一不满足即中止并给出中文原因):工作区干净、当前在 `main`、与 `origin/main` 同步、tag `vX.Y.Z` 不存在
-2. 把版本号写入 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`(保留注释),并刷新 `src-tauri/Cargo.lock`
+2. 把版本号写入 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json5`(保留注释),并刷新 `src-tauri/Cargo.lock`
 3. `git commit -m "chore(release): vX.Y.Z"` → `git tag -a vX.Y.Z` → `git push --follow-tags origin main`
 
 可选参数:

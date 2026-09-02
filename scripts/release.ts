@@ -5,7 +5,7 @@
  *   bun run release <x.y.z | patch | minor | major> [--dry-run] [--no-push]
  *
  * - 安全检查全部通过才会动文件:工作区干净、位于 main、与 origin/main 同步、tag 不存在
- * - 版本号写入 package.json / Cargo.toml / tauri.conf.json 并刷新 Cargo.lock(见 version.ts)
+ * - 版本号写入 package.json / Cargo.toml / tauri.conf.json5 并刷新 Cargo.lock(见 version.ts)
  * - `--dry-run`:只读的 git 查询照常执行(让检查结果真实),所有写文件 / git 写操作改为打印计划
  * - `--no-push`:本地 commit + tag 后停下,由用户自行 push
  * - push 之后由 .github/workflows/release.yml 接手跨平台打包并创建 GitHub Release

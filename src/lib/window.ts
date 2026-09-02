@@ -4,7 +4,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauriRuntime } from "@/lib/runtime";
 
-/** 窗口固定宽度（逻辑像素，与 tauri.conf.json 的 width 一致） */
+/** 窗口固定宽度（逻辑像素，与 tauri.conf.json5 的 width 一致） */
 const WINDOW_WIDTH = 760;
 
 /** 隐藏启动器窗口（对应后端 hide_launcher 命令） */

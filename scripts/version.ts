@@ -1,16 +1,16 @@
 /**
  * 版本号读写与一致性校验。
  *
- * 版本号散落在 package.json / src-tauri/Cargo.toml / src-tauri/tauri.conf.json 三处,
+ * 版本号散落在 package.json / src-tauri/Cargo.toml / src-tauri/tauri.conf.json5 三处,
  * 另外 src-tauri/Cargo.lock 也记录本 crate 的版本。本模块统一负责:
  * - readVersions:按固定正则读取三处(及 Cargo.lock)的版本号
- * - writeVersions:纯文本替换写入三处,保留 tauri.conf.json 的 JSON5 注释与 Cargo.toml 的其余内容
+ * - writeVersions:纯文本替换写入三处,保留 tauri.conf.json5 的 JSON5 注释与 Cargo.toml 的其余内容
  * - refreshCargoLock:Cargo.toml 改完后刷新 Cargo.lock 中本 crate 的版本,不下载不编译
  * - assertConsistent:校验三处一致,可选与 tag 比对
  * - CLI:`bun run scripts/version.ts check [vX.Y.Z]`,供 release.yml 的 verify job 与本地自检复用
  *
  * 读与写共用同一组正则,保证「读到什么就改什么」;不用 JSON.parse / TOML 解析器重序列化,
- * 否则 tauri.conf.json 的注释会丢。只用 Node 内置模块,node / bun 皆可运行。
+ * 否则 tauri.conf.json5 的注释会丢。只用 Node 内置模块,node / bun 皆可运行。
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -24,7 +24,7 @@ export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const VERSION_FILES = {
   packageJson: "package.json",
   cargoToml: "src-tauri/Cargo.toml",
-  tauriConf: "src-tauri/tauri.conf.json",
+  tauriConf: "src-tauri/tauri.conf.json5",
 } as const;
 
 /** Cargo.lock 路径(相对仓库根);由 cargo 刷新,脚本不手写 */
@@ -42,7 +42,7 @@ export interface VersionSnapshot {
   packageJson: string;
   /** src-tauri/Cargo.toml [package] 段的 version */
   cargoToml: string;
-  /** src-tauri/tauri.conf.json 根级 version */
+  /** src-tauri/tauri.conf.json5 根级 version */
   tauriConf: string;
   /** src-tauri/Cargo.lock 中本 crate 的 version;找不到条目时为 undefined */
   cargoLock: string | undefined;
@@ -59,7 +59,7 @@ const SEMVER_RE = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 
 /**
  * JSON / JSON5 文件里的 `"version": "..."` 字段。/m 下首个匹配就是根级 version:
- * package.json 与 tauri.conf.json 的根级 version 都排在任何嵌套对象之前,依赖表里也没有 version 键。
+ * package.json 与 tauri.conf.json5 的根级 version 都排在任何嵌套对象之前,依赖表里也没有 version 键。
  */
 const JSON_VERSION_RE = /^(\s*"version":\s*")([^"]+)(")/m;
 
@@ -198,7 +198,7 @@ export function readVersions(): VersionSnapshot {
 
 /**
  * 把三处版本号统一写为 version。
- * 纯文本替换:tauri.conf.json 的 JSON5 注释、Cargo.toml 其余段落原样保留;不触碰 Cargo.lock。
+ * 纯文本替换:tauri.conf.json5 的 JSON5 注释、Cargo.toml 其余段落原样保留;不触碰 Cargo.lock。
  */
 export function writeVersions(version: string): void {
   if (!isValidVersion(version)) {

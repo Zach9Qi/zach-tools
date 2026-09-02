@@ -75,7 +75,7 @@ jobs:
         with:
           workspaces: src-tauri
 
-      # tauri-build 的 build.rs 会检查 tauri.conf.json 里的 frontendDist(../dist)是否存在,不存在直接报错;
+      # tauri-build 的 build.rs 会检查 tauri.conf.json5 里的 frontendDist(../dist)是否存在,不存在直接报错;
       # 门禁只关心 Rust 代码,这里放一个空目录即可通过检查,不必真正跑前端构建
       - name: 创建空 dist 目录满足 tauri-build 检查
         # 相对 working-directory(src-tauri)写路径,避免把 Windows 反斜杠绝对路径传给 bash

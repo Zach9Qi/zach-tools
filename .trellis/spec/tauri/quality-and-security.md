@@ -51,7 +51,7 @@ CI(`.github/workflows/ci.yml`)在 **windows-latest 与 ubuntu-24.04** 双平台�
 - 新用 core 能力(窗口操作等)同样先查权限标识再加进 capability,不图省事上宽泛权限
 - capability 文件带 `$schema`(指向 `gen/schemas/desktop-schema.json`)获得补全校验
 
-**CSP 现状与债务(如实记录)**:`tauri.conf.json` 当前 `"csp": null`(开发便利),配置注释已声明「生产建议收紧」。发布流水线(`bun run release` → `release.yml`)已就位,这项债务不再有「还没法发布」作缓冲——**正式发布前必须配置 CSP**(官方基线:`default-src 'self'`,连接放行 `ipc: http://ipc.localhost`);本项目无远程资源加载,收紧成本低。在那之前,不要引入依赖远程脚本 / 远程样式的实现,避免抬高收紧成本。
+**CSP 现状与债务(如实记录)**:`tauri.conf.json5` 当前 `"csp": null`(开发便利),配置注释已声明「生产建议收紧」。发布流水线(`bun run release` → `release.yml`)已就位,这项债务不再有「还没法发布」作缓冲——**正式发布前必须配置 CSP**(官方基线:`default-src 'self'`,连接放行 `ipc: http://ipc.localhost`);本项目无远程资源加载,收紧成本低。在那之前,不要引入依赖远程脚本 / 远程样式的实现,避免抬高收紧成本。
 
 **IPC 边界校验**:前端传入的数值、枚举在命令层校验(clamp / 类型系统兜底),见[命令与 IPC](./commands-and-ipc.md)。
 
@@ -59,7 +59,7 @@ CI(`.github/workflows/ci.yml`)在 **windows-latest 与 ubuntu-24.04** 双平台�
 
 ## 配置文件
 
-- `tauri.conf.json` 启用了 json5(`config-json5` feature),**每个配置项写中文注释**说明用途与取值理由(现有文件为范例);`.vscode/settings.json` 已把它关联成 jsonc
+- 配置文件必须是 `tauri.conf.json5`(`config-json5` feature),**每个配置项写中文注释**说明用途与取值理由(现有文件为范例)。不要改回 `tauri.conf.json`:`tauri-apps/tauri-action` 对 `.json` 走 `JSON.parse`,带注释会在 Release 打包阶段直接失败;`.json5` 才会走 JSON5 解析。本地编辑器可把该文件关联成 jsonc 以用 `$schema` 补全(`.vscode/settings.json` 不入库)
 - 窗口行为类配置(尺寸、透明、置顶)改动时,检查前端是否有对应的镜像常量或 CSS 假设(宽度 ↔ `WINDOW_WIDTH`,高度上限 ↔ 面板 `max-h`)
 
 ---
