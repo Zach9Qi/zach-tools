@@ -16,6 +16,8 @@ cargo test         # 存储层等单测
 
 CI(`.github/workflows/ci.yml`)在 **windows-latest 与 ubuntu-24.04** 双平台跑 `cargo fmt --check` / `cargo clippy --all-targets -- -D warnings` / `cargo test`:Windows 覆盖真实 Win32 平台层,Ubuntu 覆盖 `stub.rs`,任何 clippy 警告或跨平台编译破坏都会挡下 main 的 push / PR。本地把 clippy 警告清零即等价于过 CI。
 
+函数参数若只在 `#[cfg(windows)]` 体内使用，Ubuntu 编译会报 `unused_variables`（CI 开了 `-D warnings`）。处理原则：非 Windows 无事可做的函数，整个函数和调用点一起 `#[cfg(windows)]`（范例：`launcher_window.rs` 的 `install_platform_hooks` 与 `lib.rs` 调用点）；确需跨平台同签名的走 facade/stub。不要用 `let _ = param;` 或 `allow(unused_variables)` 压警告。
+
 ---
 
 ## unwrap / expect 政策

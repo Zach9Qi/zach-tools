@@ -10,6 +10,7 @@
 
 - 平台无关的数据类型定义在 facade(`ClipboardCapture`)
 - `#[cfg(windows)]` 声明真实实现模块并 `pub use` 逐个导出函数;`#[cfg(not(windows))]` 导出 `stub.rs` 的同签名空实现,**保证任何平台都能编译**
+- 业务层仅 Windows 才有意义的钩子（如 `install_platform_hooks`）：函数和调用点都加 `#[cfg(windows)]`，非 Windows 不提供空实现。不要写“同签名但函数体整段 `#[cfg(windows)]`”，那会在 Ubuntu CI 报 `unused_variables`；若确实需要跨平台同签名，走 facade/stub 模式，stub 参数用 `_param` 命名
 - stub 的空实现不是静默:有副作用缺失的记 `log::warn!`(`spawn_monitor`),纯查询返回中性值(`foreground_window` → `None`,`focus_window` → `false`)
 - 新增平台能力三步:facade 定义签名 → `win_xxx.rs` 实现 → `stub.rs` 补同签名空实现
 
