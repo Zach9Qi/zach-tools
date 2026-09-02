@@ -17,7 +17,7 @@ const emit = defineEmits<{ selectKind: [key: string]; toggleFavoriteOnly: [] }>(
 <!-- 过滤行:左侧类型 tab 单选,分隔线右侧是正交的「收藏」开关;
      mousedown.prevent 保持焦点在搜索框 -->
 <template>
-  <div class="flex h-10 shrink-0 items-center gap-1 border-t border-line px-3">
+  <div class="flex h-10 shrink-0 items-center gap-1 border-t border-border px-3">
     <button
       v-for="tab in tabs"
       :key="tab.key"
@@ -25,26 +25,28 @@ const emit = defineEmits<{ selectKind: [key: string]; toggleFavoriteOnly: [] }>(
       class="rounded-lg px-2.5 py-1.5 text-xs"
       :class="
         tab.key === activeKey
-          ? 'bg-surface-muted text-content'
-          : 'text-muted hover:text-content-secondary'
+          ? 'bg-accent text-accent-foreground'
+          : 'text-muted-foreground hover:text-foreground'
       "
       @mousedown.prevent
       @click="emit('selectKind', tab.key)"
     >
       {{ tab.label }}
     </button>
-    <span class="mx-1 h-4 w-px shrink-0 bg-line" />
+    <span class="mx-1 h-4 w-px shrink-0 bg-border" />
     <button
       type="button"
       class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs"
       :class="
-        favoriteOnly ? 'bg-surface-muted text-content' : 'text-muted hover:text-content-secondary'
+        favoriteOnly
+          ? 'bg-accent text-accent-foreground'
+          : 'text-muted-foreground hover:text-foreground'
       "
       :title="favoriteOnly ? '显示全部条目' : '只看收藏(Ctrl+F)'"
       @mousedown.prevent
       @click="emit('toggleFavoriteOnly')"
     >
-      <IconStar class="size-3" :class="favoriteOnly ? 'fill-amber-400 text-amber-400' : ''" />
+      <IconStar class="size-3" :class="favoriteOnly ? 'fill-warning text-warning' : ''" />
       收藏
     </button>
   </div>

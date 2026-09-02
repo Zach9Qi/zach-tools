@@ -35,16 +35,16 @@ const time = computed(() => formatRelativeTime(props.item.lastUsedAt));
   <!-- mousedown.prevent:点击条目不把焦点从搜索框抢走;整行点击即粘贴,操作按钮在右栏详情头部 -->
   <div
     class="flex h-11 shrink-0 cursor-default items-center gap-2.5 rounded-lg px-2.5"
-    :class="selected ? 'bg-surface-muted' : ''"
+    :class="selected ? 'bg-accent' : ''"
     @mousedown.prevent
     @mouseenter="emit('select')"
     @click="emit('activate')"
   >
-    <span class="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-muted">
-      <component :is="kindIcon" class="size-3.5 text-muted" />
+    <span class="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
+      <component :is="kindIcon" class="size-3.5 text-muted-foreground" />
     </span>
-    <span class="min-w-0 flex-1 truncate text-sm text-content">{{ preview }}</span>
-    <IconStar v-if="item.isFavorite" class="size-3 shrink-0 fill-amber-400 text-amber-400" />
-    <span class="shrink-0 text-xs text-muted">{{ time }}</span>
+    <span class="min-w-0 flex-1 truncate text-sm text-foreground">{{ preview }}</span>
+    <IconStar v-if="item.isFavorite" class="size-3 shrink-0 fill-warning text-warning" />
+    <span class="shrink-0 text-xs text-muted-foreground">{{ time }}</span>
   </div>
 </template>

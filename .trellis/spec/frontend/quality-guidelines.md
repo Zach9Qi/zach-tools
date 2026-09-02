@@ -59,11 +59,12 @@ async function paste(item: ClipboardItem) {
 | 禁止 | 正确做法 |
 |------|----------|
 | 拼接 Tailwind 类名片段(`bg-${color}-500`) | 完整类名间条件切换 |
-| 手写 `dark:` 双色维护 | `@theme` 语义 token(`light-dark()`) |
+| 手写 `dark:` 双色维护 | `:root` 的 `light-dark()` + 面板根 `scheme-light-dark`(见[设计令牌](./design-tokens.md)) |
+| 组件里写原语色(`zinc-*` / `amber-*`)或 `text-[Npx]` | 语义 token(`bg-muted` / `text-warning`);缺字号档在 `@theme` 加 `--text-*` |
 | 组件里直接 `invoke` / `listen` / 字符串命令名 | 经模块 `lib/` 封装函数 |
 | `../../` 相对路径导入 | `@/` 别名 |
 | 外壳按工具 id 写分支 | 经 `tools/registry.ts` 查表 |
-| 创建 `tailwind.config.js` | `src/index.css` 的 `@theme` |
+| 创建 `tailwind.config.js` | `src/index.css` 的三层 token(`:root` / `@theme inline` / `@layer base`) |
 | 引入 lucide 之外的图标库 | `~icons/lucide/*` |
 | `any`、滥用 `!` 断言 | 泛型 / 收窄 / 早返回 |
 | tools 导入 `@/launcher/*`(反向依赖,oxlint 强制报错) | 外壳能力从共享层(`src/lib/`、`src/composables/`)获取 |

@@ -10,7 +10,7 @@
 src/
 ├── App.vue              # 只做布局与顶层挂载,不含业务(全文 9 行)
 ├── main.ts              # createApp 入口
-├── index.css            # Tailwind 入口 + @theme 语义色板(全局唯一样式文件)
+├── index.css            # Tailwind 入口 + 三层 token(原始 / 语义 / base),全局唯一样式文件
 ├── composables/         # 跨模块共享 composable:useKeymap(快捷键登记,外壳与工具页共用)
 ├── lib/                 # 跨模块共享普通代码:runtime.ts(isTauriRuntime)、window.ts(启动器窗口 IPC 封装)
 ├── launcher/            # 启动器外壳与主页

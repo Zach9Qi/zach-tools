@@ -39,6 +39,6 @@ defineExpose({ focus });
     type="text"
     spellcheck="false"
     autocomplete="off"
-    class="h-full min-w-0 flex-1 cursor-text bg-transparent text-lg text-content outline-hidden select-text placeholder:text-muted"
+    class="h-full min-w-0 flex-1 cursor-text bg-transparent text-lg text-foreground outline-hidden select-text placeholder:text-muted-foreground"
   />
 </template>

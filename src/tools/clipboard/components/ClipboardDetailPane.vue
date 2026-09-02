@@ -31,48 +31,50 @@ const meta = computed(() => {
 <template>
   <div class="flex min-w-0 flex-1 flex-col">
     <header
-      class="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-line pr-2 pl-4"
+      class="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border pr-2 pl-4"
     >
-      <span class="truncate text-xs text-muted">{{ meta }}</span>
+      <span class="truncate text-xs text-muted-foreground">{{ meta }}</span>
       <span class="flex shrink-0 items-center gap-1">
         <button
           type="button"
-          class="flex size-7 items-center justify-center rounded-md hover:bg-surface-muted"
+          class="flex size-7 items-center justify-center rounded-md hover:bg-accent"
           :title="item.isFavorite ? '取消收藏' : '收藏,常驻不被自动清理'"
           @mousedown.prevent
           @click="emit('toggleFavorite')"
         >
           <IconStar
             class="size-4"
-            :class="item.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted'"
+            :class="item.isFavorite ? 'fill-warning text-warning' : 'text-muted-foreground'"
           />
         </button>
         <button
           type="button"
-          class="flex size-7 items-center justify-center rounded-md hover:bg-surface-muted"
+          class="flex size-7 items-center justify-center rounded-md hover:bg-accent"
           :title="copied ? '已复制' : '仅复制,不粘贴'"
           @mousedown.prevent
           @click="emit('copy')"
         >
-          <IconCheck v-if="copied" class="size-4 text-content-secondary" />
-          <IconCopy v-else class="size-4 text-muted" />
+          <IconCheck v-if="copied" class="size-4 text-foreground" />
+          <IconCopy v-else class="size-4 text-muted-foreground" />
         </button>
         <button
           type="button"
-          class="flex size-7 items-center justify-center rounded-md hover:bg-surface-muted"
+          class="flex size-7 items-center justify-center rounded-md hover:bg-accent"
           title="删除这条记录"
           @mousedown.prevent
           @click="emit('remove')"
         >
-          <IconTrash2 class="size-4 text-muted" />
+          <IconTrash2 class="size-4 text-muted-foreground" />
         </button>
       </span>
     </header>
     <div class="min-h-0 flex-1 overflow-y-auto p-4">
-      <p class="cursor-text text-sm wrap-break-word whitespace-pre-wrap text-content select-text">
+      <p
+        class="cursor-text text-sm wrap-break-word whitespace-pre-wrap text-foreground select-text"
+      >
         {{ detailText }}
       </p>
-      <p v-if="truncated" class="mt-3 text-xs text-muted">
+      <p v-if="truncated" class="mt-3 text-xs text-muted-foreground">
         内容过长,仅显示前 {{ detailText.length }} 字符
       </p>
     </div>

@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "前端规范入口与一分钟速览,含技术栈与 Tailwind 约束"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "样式章节:token 用法、类名顺序、light-dark 前提,本任务要重写该章节"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "校验命令与禁止模式表,本任务需新增禁止项"}
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "index.css 在目录结构中的定位描述需更新"}
+{"file": ".trellis/spec/guides/project-conventions.md", "reason": "中文注释与 commit 规范"}
+{"file": ".trellis/tasks/09-02-tailwind-design-tokens/design.md", "reason": "词表取值、基础层规则、组件替换映射的唯一事实来源"}

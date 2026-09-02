@@ -11,7 +11,7 @@ const { hints } = useKeymap();
 
 <template>
   <footer class="flex h-10 shrink-0 items-center justify-end px-4">
-    <div class="flex items-center gap-3 text-xs text-muted">
+    <div class="flex items-center gap-3 text-xs text-muted-foreground">
       <span v-for="hint in hints" :key="hint.label" class="flex items-center gap-1">
         <KeyboardKey v-for="key in hint.keys" :key="key">{{ key }}</KeyboardKey>
         {{ hint.label }}

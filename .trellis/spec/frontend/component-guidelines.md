@@ -40,14 +40,14 @@ emit 事件名描述**意图**而非实现:`activate`(激活条目)、`select`(�
 
 ## 样式(Tailwind v4)
 
-- 主题定制只写在 `src/index.css` 的 `@theme` 块;**禁止创建 `tailwind.config.js`**
-- 颜色一律用语义 token:`bg-surface` / `text-muted` / `border-line` 等。token 用 `light-dark()` 定义,深浅色自动切换,**不写 `dark:` 变体**;生效前提是祖先有 `color-scheme`,本项目由面板根的 `scheme-light-dark` 提供(`LauncherPanel.vue`),新窗口/新根容器要记得带上
+- 主题定制只写在 `src/index.css` 的三层 token(`:root` 原始层 / `@theme inline` 语义层 / `@layer base`);**禁止创建 `tailwind.config.js`**。词表、角色与换肤见[设计令牌](./design-tokens.md)
+- 颜色一律用语义 token:`bg-background` / `text-foreground` / `text-muted-foreground` / `border-border` / `bg-muted`(底座) / `bg-accent`(选中 / hover)。同一元素上 `bg-X` 配 `text-X-foreground`(如 `bg-accent text-accent-foreground`)。深浅色由 `light-dark()` 自动切换,**不写 `dark:` 变体**;生效前提是祖先有 `color-scheme`,本项目由面板根的 `scheme-light-dark` 提供(`LauncherPanel.vue`),新窗口/新根容器要记得带上
 - 类名顺序:布局 → 尺寸/间距 → 排版 → 颜色/背景 → 边框/效果 → 状态变体;prettier-plugin-tailwindcss 会自动排序,格式化后以它为准
 - 动态样式在**完整类名**之间条件切换,禁止拼接片段:
 
 ```vue
 <!-- ✅ Tailwind 能静态扫描到 -->
-<div :class="selected ? 'bg-surface-muted' : ''" />
+<div :class="selected ? 'bg-accent' : ''" />
 <!-- ❌ 拼接片段不会被生成 -->
 <div :class="`bg-${color}-500`" />
 ```

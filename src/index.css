@@ -1,34 +1,130 @@
 @import "tailwindcss";
 
-@theme {
-  /*
-   * 语义色板：light-dark() 跟随系统深浅色自动切换，
-   * 组件直接写 bg-surface / text-muted 等，无需成对维护 dark: 变体。
-   * 生效前提：使用处的祖先元素已设置 color-scheme（面板根上的 scheme-light-dark）。
-   */
-  /* 面板底色 */
-  --color-surface: light-dark(#ffffff, #18181b);
-  /* 图标底、键帽底等次级底色 */
-  --color-surface-muted: light-dark(#f4f4f5, #27272a);
-  /* 主文字（搜索输入） */
-  --color-content: light-dark(#27272a, #f4f4f5);
-  /* 次级文字（空态标题） */
-  --color-content-secondary: light-dark(#52525b, #d4d4d8);
-  /* 弱化文字与图标（提示、占位符、空态图标） */
-  --color-muted: light-dark(#a1a1aa, #71717a);
-  /* 键帽等小字号场景的弱化文字，比 muted 对比度略高 */
-  --color-muted-strong: light-dark(#71717a, #a1a1aa);
-  /* 分区分隔线 */
-  --color-line: light-dark(rgb(228 228 231 / 0.7), #27272a);
-  /* 键帽描边等更实的线条 */
-  --color-line-strong: light-dark(rgb(212 212 216 / 0.8), #3f3f46);
-  /* 面板外描边 */
-  --color-edge: light-dark(rgb(9 9 11 / 0.1), rgb(255 255 255 / 0.1));
+/*
+ * 三层设计令牌:可变性只从 :root 进入,语义层只做映射,组件只消费工具类。
+ * 深浅色靠 light-dark() + 面板根的 scheme-light-dark;换肤覆盖 :root 即可。
+ */
 
-  /* 键帽字号（10px，行高 1） */
+:root {
+  /* —— 颜色原始层(Radix 档位职责;取值引用 Tailwind 内置 zinc / 原语色,不手写 hex) —— */
+
+  /* background: Radix 1-2 面板底。浅 white / 深 zinc-900 */
+  --background: light-dark(var(--color-white), var(--color-zinc-900));
+  /* foreground: Radix 12 高对比文字。浅 zinc-800 / 深 zinc-100 */
+  --foreground: light-dark(var(--color-zinc-800), var(--color-zinc-100));
+  /* muted: Radix 3 静态次级底(图标底座、键帽底)。浅 zinc-100 / 深 zinc-800 */
+  --muted: light-dark(var(--color-zinc-100), var(--color-zinc-800));
+  /* muted-foreground: Radix 11 低对比文字(提示、时间、占位、键帽字)。浅 zinc-500 / 深 zinc-400 */
+  --muted-foreground: light-dark(var(--color-zinc-500), var(--color-zinc-400));
+  /* accent: Radix 4-5 交互态底(hover / 选中)。初值与 muted 相同,角色独立以便日后分叉 */
+  --accent: light-dark(var(--color-zinc-100), var(--color-zinc-800));
+  /* accent-foreground: 交互态上的文字。与 foreground 同档 */
+  --accent-foreground: light-dark(var(--color-zinc-800), var(--color-zinc-100));
+  /* border: Radix 6 分隔线、面板外描边。浅 zinc-200/70% / 深 zinc-800 */
+  --border: light-dark(--alpha(var(--color-zinc-200) / 70%), var(--color-zinc-800));
+  /* input: Radix 7 控件描边(键帽、输入框)。浅 zinc-300/80% / 深 zinc-700 */
+  --input: light-dark(--alpha(var(--color-zinc-300) / 80%), var(--color-zinc-700));
+  /* ring: Radix 8 焦点环。浅 zinc-400 / 深 zinc-500 */
+  --ring: light-dark(var(--color-zinc-400), var(--color-zinc-500));
+  /* destructive: 危险操作。浅 red-600 / 深 red-400 */
+  --destructive: light-dark(var(--color-red-600), var(--color-red-400));
+  /* destructive-foreground: 危险操作上的文字 */
+  --destructive-foreground: var(--color-white);
+  /* warning: 高亮 / 收藏 / 告警(扩展项)。浅 amber-500 / 深 amber-400 */
+  --warning: light-dark(var(--color-amber-500), var(--color-amber-400));
+  /* warning-foreground: 警告色上的文字 */
+  --warning-foreground: var(--color-zinc-900);
+
+  /* —— 非颜色原始层:圆角基准、根字号、字体族、面板投影 —— */
+
+  /* 圆角单一基准;语义层按档位 calc 派生,组件类名不变 */
+  --radius: 0.5rem;
+  /* 根字号入口;默认 100% 保持现有视觉,改此值全面板等比缩放 */
+  --font-size-base: 100%;
+  /* 系统 UI 栈;语义层映射为 --font-sans,Preflight 作用于 html */
+  --font-family-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* 等宽栈;语义层映射为 --font-mono,剪贴板文本预览等后续可用 */
+  --font-family-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  /* 面板投影:延伸控制在窗口 20px 透明边距内,避免被窗口边缘生硬截断 */
+  --panel-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.35);
+}
+
+/* 语义层:只做映射与派生,零具体颜色值。inline 让工具类直接输出 var(--background),子树覆盖即可换肤 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  /* 圆角派生:sm/md/lg/xl/2xl = 基准 -4/-2/0/+4/+8px,对应 4/6/8/12/16px */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
+
+  --shadow-panel: var(--panel-shadow);
+}
+
+/* 字号刻度不属于皮肤,允许直接写值 */
+@theme {
+  /* 键帽字号(10px,行高 1) */
   --text-2xs: 0.625rem;
   --text-2xs--line-height: 1;
+}
 
-  /* 面板投影：延伸控制在窗口 20px 透明边距内，避免被窗口边缘生硬截断 */
-  --shadow-panel: 0 12px 32px -8px rgb(0 0 0 / 0.35);
+@layer base {
+  html {
+    font-size: var(--font-size-base);
+  }
+
+  /* 不设 background / color:窗口透明边缘不能有底色,且 body 无 color-scheme 时 light-dark 只会走浅色支 */
+  body {
+    cursor: default;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 写 border 不必再带颜色 */
+  * {
+    border-color: var(--color-border);
+  }
+
+  /* 启动器为非文档型 UI,默认不可选;输入与 .select-text 例外 */
+  * {
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  .select-text,
+  .select-text * {
+    user-select: text;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: --alpha(var(--muted-foreground) / 30%);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }

@@ -36,7 +36,7 @@ defineExpose({ focus: () => input.value?.focus() });
     <!-- 工具徽章,点击退出(Esc / 空框退格同效) -->
     <button
       type="button"
-      class="flex shrink-0 items-center gap-1.5 rounded-lg bg-surface-muted px-2.5 py-1.5 text-sm text-content-secondary"
+      class="flex shrink-0 items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-sm text-foreground"
       title="退出(Esc)"
       @mousedown.prevent
       @click="close"

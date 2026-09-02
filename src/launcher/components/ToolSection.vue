@@ -17,7 +17,7 @@ const emit = defineEmits<{ activate: [entry: SectionEntry]; select: [index: numb
 <template>
   <section class="flex flex-col gap-1">
     <header class="flex h-5 items-center justify-between px-2">
-      <h2 class="text-xs font-medium text-muted">{{ title }}</h2>
+      <h2 class="text-xs font-medium text-muted-foreground">{{ title }}</h2>
       <!-- 右侧操作槽(如「全部 >」),不传则无 -->
       <slot name="action" />
     </header>
