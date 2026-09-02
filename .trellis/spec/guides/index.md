@@ -21,7 +21,7 @@ These guides help you **ask the right questions before coding**.
 
 | Guide | Purpose | When to Use |
 |-------|---------|-------------|
-| [项目通用约定](./project-conventions.md) | 语言、Git 提交规范、结构体注释等跨层约定 | 任何编码与提交之前(必读) |
+| [项目通用约定](./project-conventions.md) | 语言、Git 提交规范、结构体注释、版本号与发布、CI 工作流等跨层约定 | 任何编码与提交之前(必读);改版本号 / 改 `.github/` 前必读 |
 | [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
 | [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
 

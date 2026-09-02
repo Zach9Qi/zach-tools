@@ -45,7 +45,7 @@
 - 与 Tauri 的 `invoke` / `listen` 全部封装在 `lib/` 里(单模块私有的在模块内,跨模块的在 `src/lib/`),并用 `isTauriRuntime()` 降级,保证纯浏览器(`bun run dev` 直接打开)也能预览
 - 注释用中文、写「为什么」;导出的类型、字段、函数都要有文档注释
 
-提交前:`bun run format && bun run lint && bun run test && bun run build` 全过。
+提交前:`bun run format && bun run lint && bun run typecheck:node && bun run test && bun run build` 全过;push 到 `main` 后 CI 会再跑一遍同样的命令。
 
 ---
 

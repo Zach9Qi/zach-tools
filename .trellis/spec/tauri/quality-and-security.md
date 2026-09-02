@@ -14,6 +14,8 @@ cargo test         # 存储层等单测
 
 联调用仓库根的 `bun run tauri dev`。
 
+CI(`.github/workflows/ci.yml`)在 **windows-latest 与 ubuntu-24.04** 双平台跑 `cargo fmt --check` / `cargo clippy --all-targets -- -D warnings` / `cargo test`:Windows 覆盖真实 Win32 平台层,Ubuntu 覆盖 `stub.rs`,任何 clippy 警告或跨平台编译破坏都会挡下 main 的 push / PR。本地把 clippy 警告清零即等价于过 CI。
+
 ---
 
 ## unwrap / expect 政策
@@ -47,7 +49,7 @@ cargo test         # 存储层等单测
 - 新用 core 能力(窗口操作等)同样先查权限标识再加进 capability,不图省事上宽泛权限
 - capability 文件带 `$schema`(指向 `gen/schemas/desktop-schema.json`)获得补全校验
 
-**CSP 现状与债务(如实记录)**:`tauri.conf.json` 当前 `"csp": null`(开发便利),配置注释已声明「生产建议收紧」。**正式发布前必须配置 CSP**(官方基线:`default-src 'self'`,连接放行 `ipc: http://ipc.localhost`);本项目无远程资源加载,收紧成本低。在那之前,不要引入依赖远程脚本 / 远程样式的实现,避免抬高收紧成本。
+**CSP 现状与债务(如实记录)**:`tauri.conf.json` 当前 `"csp": null`(开发便利),配置注释已声明「生产建议收紧」。发布流水线(`bun run release` → `release.yml`)已就位,这项债务不再有「还没法发布」作缓冲——**正式发布前必须配置 CSP**(官方基线:`default-src 'self'`,连接放行 `ipc: http://ipc.localhost`);本项目无远程资源加载,收紧成本低。在那之前,不要引入依赖远程脚本 / 远程样式的实现,避免抬高收紧成本。
 
 **IPC 边界校验**:前端传入的数值、枚举在命令层校验(clamp / 类型系统兜底),见[命令与 IPC](./commands-and-ipc.md)。
 
