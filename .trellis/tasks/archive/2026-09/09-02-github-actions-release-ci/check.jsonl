@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/guides/project-conventions.md", "reason": "检查注释语言与提交信息格式"}
+{"file": ".trellis/spec/tauri/quality-and-security.md", "reason": "核对 ci.yml 后端命令与 spec 一致"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "核对前端门禁命令与 spec 一致"}
+{"file": ".trellis/tasks/09-02-github-actions-release-ci/design.md", "reason": "对照设计核对工作流实现"}

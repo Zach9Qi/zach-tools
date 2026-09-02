@@ -4,7 +4,7 @@
   // 应用显示名称（安装包、窗口等会用到）
   "productName": "zach-tools",
   // 应用版本号
-  "version": "0.1.0",
+  "version": "0.1.1",
   // 应用唯一标识（反向域名风格，打包/系统注册用）
   "identifier": "com.chenziqi.zach-tools",
   // 前后端构建相关配置
