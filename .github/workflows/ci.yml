@@ -35,13 +35,10 @@ jobs:
       - name: Lint(oxlint)
         run: bun run lint
 
-      - name: Node 侧类型检查(vite / vitest 配置与 scripts/)
-        run: bun run typecheck:node
-
       - name: 单元测试(Vitest)
         run: bun run test
 
-      - name: 前端构建(vue-tsc 类型门禁 + vite build)
+      - name: 前端构建(vue-tsc -b 全量类型门禁 + vite build)
         run: bun run build
 
   rust:

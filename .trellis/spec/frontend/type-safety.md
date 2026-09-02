@@ -60,5 +60,5 @@ export function isViewModule(module: ToolModule): module is ViewToolModule {
 类型检查就是构建门禁的一部分,提交前必须通过:
 
 ```bash
-bun run build   # vue-tsc --noEmit && vite build
+bun run build   # vue-tsc -b && vite build
 ```

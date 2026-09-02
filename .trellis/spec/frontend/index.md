@@ -10,7 +10,7 @@
 | 维度 | 选型 | 备注 |
 |------|------|------|
 | 框架 | Vue 3.5+,`<script setup>` 组合式 API | 全仓库无 Options API 代码 |
-| 语言 | TypeScript(strict) | 构建即类型门禁:`vue-tsc --noEmit` |
+| 语言 | TypeScript(strict) | 构建即类型门禁:`vue-tsc -b`(顺着 tsconfig references 同时检查浏览器侧与 Node 侧) |
 | 样式 | Tailwind CSS v4(CSS-first 配置) | 无 `tailwind.config.js`,主题在 `src/index.css` 的 `@theme` 块 |
 | 图标 | unplugin-icons + lucide | `~icons/lucide/xxx` 按需编译成组件 |
 | 构建 | Vite 6 + bun | `bun run dev` / `bun run build` |
@@ -45,7 +45,7 @@
 - 与 Tauri 的 `invoke` / `listen` 全部封装在 `lib/` 里(单模块私有的在模块内,跨模块的在 `src/lib/`),并用 `isTauriRuntime()` 降级,保证纯浏览器(`bun run dev` 直接打开)也能预览
 - 注释用中文、写「为什么」;导出的类型、字段、函数都要有文档注释
 
-提交前:`bun run format && bun run lint && bun run typecheck:node && bun run test && bun run build` 全过;push 到 `main` 后 CI 会再跑一遍同样的命令。
+提交前:`bun run format && bun run lint && bun run test && bun run build` 全过;push 到 `main` 后 CI 会再跑一遍同样的命令。
 
 ---
 

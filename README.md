@@ -10,7 +10,7 @@ bun run tauri dev    # 完整桌面运行时联调
 bun run dev          # 仅浏览器预览前端(IPC 降级为 no-op)
 ```
 
-提交前自查:`bun run format && bun run lint && bun run typecheck:node && bun run test && bun run build`,以及在 `src-tauri/` 下 `cargo fmt && cargo clippy && cargo test`。分层编码规范见 `.trellis/spec/`。
+提交前自查:`bun run format && bun run lint && bun run test && bun run build`,以及在 `src-tauri/` 下 `cargo fmt && cargo clippy && cargo test`。分层编码规范见 `.trellis/spec/`。
 
 ## 发布流程
 

@@ -65,7 +65,7 @@ bun run version:check [vX.Y.Z]                                             # scr
 
 ## CI 与工作流约定
 
-- `.github/workflows/ci.yml`:`main` 的 push / PR 门禁,前端 `lint → typecheck:node → test → build`,Rust 在 **windows-latest + ubuntu-24.04** 双平台跑 `fmt --check → clippy --all-targets -D warnings → test`(Windows 覆盖真实 Win32 平台层,Ubuntu 覆盖 stub,见 [tauri/platform-windows.md](../tauri/platform-windows.md));Rust job 先 `mkdir -p ../dist`,因为 `tauri-build` 会检查 `frontendDist` 目录存在
+- `.github/workflows/ci.yml`:`main` 的 push / PR 门禁,前端 `lint → test → build`(build 内含 `vue-tsc -b` 全量类型检查),Rust 在 **windows-latest + ubuntu-24.04** 双平台跑 `fmt --check → clippy --all-targets -D warnings → test`(Windows 覆盖真实 Win32 平台层,Ubuntu 覆盖 stub,见 [tauri/platform-windows.md](../tauri/platform-windows.md));Rust job 先 `mkdir -p ../dist`,因为 `tauri-build` 会检查 `frontendDist` 目录存在
 - `.github/workflows/release.yml`:`v*` tag 触发,`verify`(版本一致 + lint/test)→ `build`(4 平台 matrix,`fail-fast: false`,tauri-action 只构建不建 Release)→ `publish`(全部成功后一次性建 Release,附件齐全才发)
 - 工作流写法:step `name` 与 `#` 注释中文,决策点写「为什么」;顶层 `permissions: contents: read`,只在需要写的 job 提升;第三方 action 固定大版本 tag、**只选 Node 24 运行时的版本**(托管 runner 2026-09-23 移除 Node 20,`actions/*@v4` 仍是 Node 20,当前用 `checkout@v6` / `upload-artifact@v6` / `download-artifact@v7` / `action-gh-release@v3`);runner 不用已进入弃用流程的镜像(`ubuntu-22.04` 自 2026-09-17 弃用)
 - 本地无法跑 Actions,改 yml 后用 `actionlint` 静态校验(`go install github.com/rhysd/actionlint/cmd/actionlint@latest`)
