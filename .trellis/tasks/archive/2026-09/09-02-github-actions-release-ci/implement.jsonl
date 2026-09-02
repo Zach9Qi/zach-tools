@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/guides/project-conventions.md", "reason": "中文注释与 Conventional Commits 提交规范,yml/脚本注释语言约束"}
+{"file": ".trellis/spec/tauri/quality-and-security.md", "reason": "后端门禁命令(fmt/clippy/test)与执行目录,ci.yml 后端 job 依据"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端 lint/test 门禁约定,ci.yml 与 release verify job 依据"}
+{"file": ".trellis/spec/tauri/platform-windows.md", "reason": "平台层 stub 设计,解释为何 Rust CI 需 Windows+Ubuntu 双平台以及 mac/linux 产物功能受限"}
+{"file": ".trellis/tasks/09-02-github-actions-release-ci/design.md", "reason": "流水线结构、矩阵、版本脚本实现要点"}
