@@ -34,7 +34,14 @@
 
 ## 2. 颜色词表
 
-取值全部引用 Tailwind 内置 oklch 色阶(`var(--color-zinc-900)` 等),alpha 用 `--alpha()`。不手写 hex。
+**颜色怎么写**(`:root` 里的底 / 字 / 线 / 阴影色 / 滚动条色都适用):
+
+1. **色相**只用 Tailwind 内置变量:`var(--color-zinc-900)` / `var(--color-white)` / `var(--color-black)` / `var(--color-amber-400)` …
+2. **透明**用 `--alpha(var(--color-zinc-200) / 70%)`
+3. **深浅不同**用 `light-dark(浅色支, 深色支)`
+4. **深浅相同**直接写一支,如 `var(--color-white)`,不包空的 `light-dark()`
+
+阴影的偏移和模糊可以是 `px`,其中的颜色仍走上面四步。字面颜色(`#fff` / `oklch(...)` / `rgb(...)` / `hsl(...)`)一律不写。
 
 | token | 职责(Radix 档位) | 何时用 | 不该用于什么 |
 |------|------------------|--------|--------------|
@@ -52,7 +59,7 @@
 
 **`muted` vs `accent`**:初值相同,但必须按角色分开写。底座 / 键帽 → `bg-muted`;选中 / hover → `bg-accent`。日后换肤只改其一即可分叉。
 
-**成对规则**:同一元素上 `bg-X` 必须配 `text-X-foreground`(如 `bg-accent text-accent-foreground`)。不要用 `text-foreground` 顶替——初值相同也会让 `-foreground` token 变成死的,换肤才露馅。子元素坐在自己的底上(如图标底座 `bg-muted`)继续用对应角色,不跟外层 accent 绑。
+**成对规则**:只约束 `accent` / `destructive` / `warning`——这些 `-foreground` 是「坐在该底色上的字」。同一元素写了 `bg-accent` 就必须配 `text-accent-foreground`,不要用 `text-foreground` 顶替(初值相同也会让 token 变成死的,换肤才露馅)。`muted` / `background` **不受此约束**:`muted-foreground` 是低对比文字,不是「muted 底上的字」。徽章这类次级底上的主文案用 `bg-muted text-foreground`(`ToolSearchBar.vue`);键帽字要淡才用 `text-muted-foreground`。子元素坐在自己的底上(如图标底座)继续按自身角色选字色,不跟外层 accent 绑。
 
 **`border` vs `input`**:分隔与外轮廓走 `border`;可交互控件描边走 `input`。
 
@@ -62,7 +69,7 @@
 
 ## 3. 圆角 / 字号 / 字体角色
 
-**圆角**:单一基准 `--radius`(默认 `0.5rem`),档位由 `calc` 派生,组件类名不变。
+**圆角**:单一基准 `--radius`(默认 `0.5rem`),档位由 `calc` 派生,组件类名不变。偏移是 `px`(保 2px 台阶),不随根字号等比;只有基准本身是 rem。
 
 | 类名 | 派生 | 像素(默认基准) | 角色 |
 |------|------|----------------|------|
@@ -74,20 +81,20 @@
 
 **字号**:
 
-- 根入口 `--font-size-base`(默认 `100%`),`html { font-size: var(--font-size-base) }`。改此值全面板(含 `max-h-128`、图标)等比缩放
+- 根入口 `--font-size-base`(默认 `100%`),`html { font-size: var(--font-size-base) }`。改此值后**间距 / 字号 / rem 尺寸**(如 `max-h-128`、图标 `size-*`)等比缩放;圆角档位偏移、`shadow-panel`、滚动条宽度是像素级微调,不跟着缩
 - 键帽用 `text-2xs`(`0.625rem` / 行高 1);禁止 `text-[Npx]`,缺档就在 `@theme` 加 token
 - 其余用 Tailwind 默认刻度(`text-xs` / `text-sm` / `text-lg` …)
 
 **字体**:`--font-sans`(系统 UI 栈,Preflight 作用于 `html`)、`--font-mono`(等宽,剪贴板文本预览等后续可用)。原始值在 `:root` 的 `--font-family-sans` / `--font-family-mono`。
 
-**投影**:`shadow-panel` 映射 `--panel-shadow`,延伸控制在窗口透明边距内。
+**投影**:`shadow-panel` 映射 `--panel-shadow`。偏移 / 模糊用 `px`(延伸控制在窗口 20px 透明边内);颜色写成 `light-dark(--alpha(var(--color-black) / 20%), --alpha(var(--color-black) / 50%))`,浅淡深重,和别的 token 同一套路。
 
 ---
 
 ## 4. 如何新增一个 token
 
 1. **先问是否已有档位能覆盖**。文字只有 `foreground` / `muted-foreground`;底只有 `background` / `muted` / `accent`;线只有 `border` / `input`。角色对得上就复用,不要为「稍微深一点」再开一档
-2. **原始层加变量**:在 `:root` 声明 `--foo: light-dark(var(--color-zinc-…), var(--color-zinc-…))`,颜色必须引用内置色阶,alpha 用 `--alpha()`,禁止手写 hex / oklch。浅深两支相同则直接写 `var(--color-white)`,不必包一层空的 `light-dark()`
+2. **原始层加变量**:按 §2「颜色怎么写」四步声明。示例:`--foo: light-dark(var(--color-zinc-100), var(--color-zinc-800))`;要透明就包 `--alpha(...)`
 3. **语义层加映射**:`@theme inline` 里 `--color-foo: var(--foo);`(或 `--radius-*` / `--font-*` / `--shadow-*` 的对应命名空间)
 4. **本文登记**:补进上面的词表或角色表,写清职责、何时用、不该用于什么。扩展色(如 `warning`)必须在本文件出现,不能只活在 CSS 里
 
@@ -110,7 +117,7 @@
 }
 ```
 
-**调字号**:`--font-size-base: 87.5%;`(全面板等比缩放)。
+**调字号**:`--font-size-base: 87.5%;`。间距 / 字号 / rem 尺寸等比缩放;圆角 `± Npx` 与阴影保持像素级微调(阴影绑着窗口 20px 透明边,不宜跟字号跑)。
 
 **强制浅 / 深**:改面板根的 `scheme-light-dark` 为 `scheme-light` 或 `scheme-dark`。不要引入 `.dark` 类,不要写 `dark:` 变体。JS 主题切换(后续任务)的接口就是这些 `:root` 变量名,用 `style.setProperty` 即可。
 
@@ -124,10 +131,11 @@
 |------|----------|
 | 组件里写原语色(`bg-zinc-*` / `text-amber-*` / `fill-amber-400`) | 语义 token(`bg-muted` / `text-warning` / `fill-warning`) |
 | `text-[Npx]` 任意值 | 用刻度类;缺档在 `@theme` 加 `--text-*` |
-| `:root` 手写 hex / 裸 oklch | `light-dark()` + `var(--color-zinc-*)` / `var(--color-white)`,alpha 用 `--alpha()` |
+| `:root` 写字面颜色(`#fff` / `oklch()` / `rgb()` / `hsl()`,含阴影里的) | 按 §2「颜色怎么写」:内置 `var(--color-*)` + `--alpha()` + 需要时 `light-dark()` |
 | `dark:` 变体或 `.dark` 双份维护 | `light-dark()` + 面板根 `scheme-*` |
 | `@theme inline` 里写具体颜色值 | 只写 `var(--background)` 这类映射 / `calc(var(--radius) ± N)` |
 | 新建 `tailwind.config.js` | 主题只活在 `src/index.css` |
 | 把 `muted`(底)当成字色、`accent` 当成底座 | 见 §2 角色表 |
-| 同一元素 `bg-accent text-foreground`(或任何 `bg-X` 配错档字色) | `bg-X text-X-foreground` |
+| 同一元素 `bg-accent text-foreground`(以及 `destructive` / `warning` 同错) | `bg-accent text-accent-foreground` |
+| 因「成对」把徽章写成 `bg-muted text-muted-foreground` | `bg-muted text-foreground`;`muted-foreground` 只用于本来就要淡的字 |
 | 在 `body` / `html` 上设 `background` / `color` 或把 `color-scheme` 挂到 `html` | 面板根承担配色与 `scheme-*` |

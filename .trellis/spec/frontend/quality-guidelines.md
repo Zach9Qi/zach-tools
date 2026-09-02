@@ -61,6 +61,7 @@ async function paste(item: ClipboardItem) {
 | 拼接 Tailwind 类名片段(`bg-${color}-500`) | 完整类名间条件切换 |
 | 手写 `dark:` 双色维护 | `:root` 的 `light-dark()` + 面板根 `scheme-light-dark`(见[设计令牌](./design-tokens.md)) |
 | 组件里写原语色(`zinc-*` / `amber-*`)或 `text-[Npx]` | 语义 token(`bg-muted` / `text-warning`);缺字号档在 `@theme` 加 `--text-*` |
+| `:root` 写字面颜色(`rgb()` / `hex` / `oklch()`,含阴影) | 见[设计令牌](./design-tokens.md) §2「颜色怎么写」 |
 | 组件里直接 `invoke` / `listen` / 字符串命令名 | 经模块 `lib/` 封装函数 |
 | `../../` 相对路径导入 | `@/` 别名 |
 | 外壳按工具 id 写分支 | 经 `tools/registry.ts` 查表 |

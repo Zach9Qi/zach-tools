@@ -6,7 +6,7 @@
  */
 
 :root {
-  /* —— 颜色原始层(Radix 档位职责;取值引用 Tailwind 内置 zinc / 原语色,不手写 hex) —— */
+  /* —— 颜色原始层(Radix 档位职责;色相用内置 var(--color-*),透明用 --alpha,深浅用 light-dark) —— */
 
   /* background: Radix 1-2 面板底。浅 white / 深 zinc-900 */
   --background: light-dark(var(--color-white), var(--color-zinc-900));
@@ -39,14 +39,16 @@
 
   /* 圆角单一基准;语义层按档位 calc 派生,组件类名不变 */
   --radius: 0.5rem;
-  /* 根字号入口;默认 100% 保持现有视觉,改此值全面板等比缩放 */
+  /* 根字号入口;默认 100% 保持现有视觉。改此值后间距/字号/rem 尺寸等比,圆角偏移与阴影仍是 px */
   --font-size-base: 100%;
   /* 系统 UI 栈;语义层映射为 --font-sans,Preflight 作用于 html */
-  --font-family-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-family-sans: system-ui, -apple-system, "Segoe UI", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   /* 等宽栈;语义层映射为 --font-mono,剪贴板文本预览等后续可用 */
   --font-family-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  /* 面板投影:延伸控制在窗口 20px 透明边距内,避免被窗口边缘生硬截断 */
-  --panel-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.35);
+  /* 面板投影:形状用 px(绑窗口透明边);颜色走内置黑 + --alpha,浅 20% / 深 50% */
+  --panel-shadow: 0 12px 32px -8px
+    light-dark(--alpha(var(--color-black) / 20%), --alpha(var(--color-black) / 50%));
 }
 
 /* 语义层:只做映射与派生,零具体颜色值。inline 让工具类直接输出 var(--background),子树覆盖即可换肤 */
