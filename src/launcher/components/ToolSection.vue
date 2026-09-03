@@ -15,13 +15,13 @@ const emit = defineEmits<{ activate: [entry: SectionEntry]; select: [index: numb
 </script>
 
 <template>
-  <section class="flex flex-col gap-1">
-    <header class="flex h-5 items-center justify-between px-2">
-      <h2 class="text-xs font-medium text-muted-foreground">{{ title }}</h2>
+  <section class="flex flex-col gap-1.5">
+    <header class="flex h-5 items-center justify-between px-2.5">
+      <h2 class="text-xs font-semibold tracking-wide text-muted-foreground/80">{{ title }}</h2>
       <!-- 右侧操作槽(如「全部 >」),不传则无 -->
       <slot name="action" />
     </header>
-    <div class="grid grid-cols-8 gap-1">
+    <div class="grid grid-cols-8 gap-1.5">
       <ToolTile
         v-for="entry in entries"
         :key="entry.tool.id"

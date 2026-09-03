@@ -19,16 +19,18 @@ const { isSearch, sections, selectedIndex, select } = useResults({
 <template>
   <div class="flex min-h-0 flex-1 flex-col border-y border-border p-4">
     <!-- 搜索态全部分区为空才提示无结果;剪贴板列表接入前只看磁贴分区 -->
-    <div v-if="isSearch && sections.length === 0" class="flex flex-col items-center gap-3 py-10">
-      <div class="flex size-12 items-center justify-center rounded-2xl bg-muted">
-        <IconSearchX class="size-5 text-muted-foreground" />
+    <div v-if="isSearch && sections.length === 0" class="flex flex-col items-center gap-3.5 py-12">
+      <div
+        class="flex size-13 items-center justify-center rounded-2xl border border-border/50 bg-muted/80 shadow-2xs"
+      >
+        <IconSearchX class="size-6 text-muted-foreground/70" />
       </div>
-      <p class="text-sm text-foreground">没有与「{{ query }}」匹配的内容</p>
+      <p class="text-sm font-medium text-muted-foreground">没有与「{{ query }}」匹配的内容</p>
     </div>
 
     <!-- 分区由 useResults 的 sections 驱动:渲染顺序、offset 与导航展平同源,模板不再手工对齐。
          磁贴区 shrink-0:剪贴板列表接入后排在上方,面板到高度上限时列表内部滚动,磁贴不滚走 -->
-    <div v-else class="flex shrink-0 flex-col gap-4">
+    <div v-else class="flex shrink-0 flex-col gap-4.5">
       <ToolSection
         v-for="section in sections"
         :key="section.key"
@@ -40,7 +42,9 @@ const { isSearch, sections, selectedIndex, select } = useResults({
       >
         <!-- 已固定分区特有的「全部 >」;第一版只占位,不跳转 -->
         <template v-if="section.key === 'pinned'" #action>
-          <span class="flex items-center gap-0.5 text-xs text-muted-foreground">
+          <span
+            class="flex items-center gap-0.5 rounded-sm px-1 text-xs text-muted-foreground/80 transition-colors hover:text-foreground"
+          >
             全部
             <IconChevronRight class="size-3" />
           </span>

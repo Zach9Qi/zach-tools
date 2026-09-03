@@ -31,50 +31,50 @@ const meta = computed(() => {
 <template>
   <div class="flex min-w-0 flex-1 flex-col">
     <header
-      class="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border pr-2 pl-4"
+      class="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border/80 pr-3 pl-4"
     >
-      <span class="truncate text-xs text-muted-foreground">{{ meta }}</span>
+      <span class="truncate text-xs font-medium text-muted-foreground/80">{{ meta }}</span>
       <span class="flex shrink-0 items-center gap-1">
         <button
           type="button"
-          class="flex size-7 items-center justify-center rounded-md hover:bg-accent"
+          class="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95"
           :title="item.isFavorite ? '取消收藏' : '收藏,常驻不被自动清理'"
           @mousedown.prevent
           @click="emit('toggleFavorite')"
         >
           <IconStar
-            class="size-4"
-            :class="item.isFavorite ? 'fill-warning text-warning' : 'text-muted-foreground'"
+            class="size-4 transition-colors"
+            :class="item.isFavorite ? 'fill-warning text-warning' : ''"
           />
         </button>
         <button
           type="button"
-          class="flex size-7 items-center justify-center rounded-md hover:bg-accent"
+          class="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95"
           :title="copied ? '已复制' : '仅复制,不粘贴'"
           @mousedown.prevent
           @click="emit('copy')"
         >
           <IconCheck v-if="copied" class="size-4 text-foreground" />
-          <IconCopy v-else class="size-4 text-muted-foreground" />
+          <IconCopy v-else class="size-4" />
         </button>
         <button
           type="button"
-          class="flex size-7 items-center justify-center rounded-md hover:bg-accent"
+          class="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-destructive active:scale-95"
           title="删除这条记录"
           @mousedown.prevent
           @click="emit('remove')"
         >
-          <IconTrash2 class="size-4 text-muted-foreground" />
+          <IconTrash2 class="size-4" />
         </button>
       </span>
     </header>
-    <div class="min-h-0 flex-1 overflow-y-auto p-4">
+    <div class="min-h-0 flex-1 overflow-y-auto p-4.5">
       <p
-        class="cursor-text text-sm wrap-break-word whitespace-pre-wrap text-foreground select-text"
+        class="cursor-text text-sm/relaxed font-normal wrap-break-word whitespace-pre-wrap text-foreground select-text"
       >
         {{ detailText }}
       </p>
-      <p v-if="truncated" class="mt-3 text-xs text-muted-foreground">
+      <p v-if="truncated" class="mt-4 text-xs font-medium text-muted-foreground/70">
         内容过长,仅显示前 {{ detailText.length }} 字符
       </p>
     </div>

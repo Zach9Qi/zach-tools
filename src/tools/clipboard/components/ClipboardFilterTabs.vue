@@ -17,36 +17,45 @@ const emit = defineEmits<{ selectKind: [key: string]; toggleFavoriteOnly: [] }>(
 <!-- 过滤行:左侧类型 tab 单选,分隔线右侧是正交的「收藏」开关;
      mousedown.prevent 保持焦点在搜索框 -->
 <template>
-  <div class="flex h-10 shrink-0 items-center gap-1 border-t border-border px-3">
-    <button
-      v-for="tab in tabs"
-      :key="tab.key"
-      type="button"
-      class="rounded-lg px-2.5 py-1.5 text-xs"
-      :class="
-        tab.key === activeKey
-          ? 'bg-accent text-accent-foreground'
-          : 'text-muted-foreground hover:text-foreground'
-      "
-      @mousedown.prevent
-      @click="emit('selectKind', tab.key)"
+  <div class="flex h-11 shrink-0 items-center justify-between border-t border-border/80 px-4">
+    <!-- macOS 风格分段选择器 (Segmented Control) 质感 -->
+    <div
+      class="flex items-center gap-0.5 rounded-lg border border-border/40 bg-muted/50 p-0.5 shadow-2xs"
     >
-      {{ tab.label }}
-    </button>
-    <span class="mx-1 h-4 w-px shrink-0 bg-border" />
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        type="button"
+        class="rounded-md px-3 py-1 text-xs font-medium transition-all duration-150"
+        :class="
+          tab.key === activeKey
+            ? 'bg-background text-foreground shadow-xs'
+            : 'text-muted-foreground hover:text-foreground'
+        "
+        @mousedown.prevent
+        @click="emit('selectKind', tab.key)"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <!-- 收藏过滤开关 -->
     <button
       type="button"
-      class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs"
+      class="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-all duration-150"
       :class="
         favoriteOnly
-          ? 'bg-accent text-accent-foreground'
-          : 'text-muted-foreground hover:text-foreground'
+          ? 'border-border/60 bg-accent text-accent-foreground shadow-2xs'
+          : 'border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground'
       "
       :title="favoriteOnly ? '显示全部条目' : '只看收藏(Ctrl+F)'"
       @mousedown.prevent
       @click="emit('toggleFavoriteOnly')"
     >
-      <IconStar class="size-3" :class="favoriteOnly ? 'fill-warning text-warning' : ''" />
+      <IconStar
+        class="size-3.5 transition-colors"
+        :class="favoriteOnly ? 'fill-warning text-warning' : 'text-muted-foreground'"
+      />
       收藏
     </button>
   </div>

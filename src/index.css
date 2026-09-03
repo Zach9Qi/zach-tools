@@ -8,22 +8,22 @@
 :root {
   /* —— 颜色原始层(Radix 档位职责;色相用内置 var(--color-*),透明用 --alpha,深浅用 light-dark) —— */
 
-  /* background: Radix 1-2 面板底。浅 white / 深 zinc-900 */
+  /* background: Radix 1-2 面板底。浅 white / 深 zinc-900 (带微通透感与层次) */
   --background: light-dark(var(--color-white), var(--color-zinc-900));
   /* foreground: Radix 12 高对比文字。浅 zinc-800 / 深 zinc-100 */
   --foreground: light-dark(var(--color-zinc-800), var(--color-zinc-100));
-  /* muted: Radix 3 静态次级底(图标底座、键帽底)。浅 zinc-100 / 深 zinc-800 */
-  --muted: light-dark(var(--color-zinc-100), var(--color-zinc-800));
+  /* muted: Radix 3 静态次级底(图标底座、键帽底)。浅 zinc-100/80% / 深 zinc-800/80% (柔和轻盈) */
+  --muted: light-dark(--alpha(var(--color-zinc-100) / 90%), --alpha(var(--color-zinc-800) / 75%));
   /* muted-foreground: Radix 11 低对比文字(提示、时间、占位、键帽字)。浅 zinc-500 / 深 zinc-400 */
   --muted-foreground: light-dark(var(--color-zinc-500), var(--color-zinc-400));
-  /* accent: Radix 4-5 交互态底(hover / 选中)。初值与 muted 相同,角色独立以便日后分叉 */
-  --accent: light-dark(var(--color-zinc-100), var(--color-zinc-800));
+  /* accent: Radix 4-5 交互态底(hover / 选中)。macOS 质感微对比底 */
+  --accent: light-dark(--alpha(var(--color-zinc-900) / 6%), --alpha(var(--color-white) / 10%));
   /* accent-foreground: 交互态上的文字。与 foreground 同档 */
-  --accent-foreground: light-dark(var(--color-zinc-800), var(--color-zinc-100));
-  /* border: Radix 6 分隔线、面板外描边。浅 zinc-200/70% / 深 zinc-800 */
-  --border: light-dark(--alpha(var(--color-zinc-200) / 70%), var(--color-zinc-800));
-  /* input: Radix 7 控件描边(键帽、输入框)。浅 zinc-300/80% / 深 zinc-700 */
-  --input: light-dark(--alpha(var(--color-zinc-300) / 80%), var(--color-zinc-700));
+  --accent-foreground: light-dark(var(--color-zinc-900), var(--color-zinc-50));
+  /* border: Radix 6 分隔线、面板外描边。浅 zinc-200/80% / 深 zinc-800/80% 更加纤细细腻 */
+  --border: light-dark(--alpha(var(--color-zinc-200) / 80%), --alpha(var(--color-zinc-700) / 60%));
+  /* input: Radix 7 控件描边(键帽、输入框)。浅 zinc-300/70% / 深 zinc-700/80% */
+  --input: light-dark(--alpha(var(--color-zinc-300) / 70%), --alpha(var(--color-zinc-600) / 60%));
   /* ring: Radix 8 焦点环。浅 zinc-400 / 深 zinc-500 */
   --ring: light-dark(var(--color-zinc-400), var(--color-zinc-500));
   /* destructive: 危险操作。浅 red-600 / 深 red-400 */

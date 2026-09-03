@@ -82,21 +82,23 @@ function handleScroll() {
       @select-kind="selectKind"
       @toggle-favorite-only="toggleFavoriteFilter"
     />
-    <div class="flex min-h-0 flex-1 border-y border-border">
+    <div class="flex min-h-0 flex-1 border-y border-border/80">
       <div
         v-if="items.length === 0 && !loading"
-        class="flex flex-1 flex-col items-center justify-center gap-3"
+        class="flex flex-1 flex-col items-center justify-center gap-3.5 py-12"
       >
-        <div class="flex size-12 items-center justify-center rounded-2xl bg-muted">
-          <component :is="emptyIcon" class="size-5 text-muted-foreground" />
+        <div
+          class="flex size-13 items-center justify-center rounded-2xl border border-border/50 bg-muted/80 shadow-2xs"
+        >
+          <component :is="emptyIcon" class="size-6 text-muted-foreground/70" />
         </div>
-        <p class="text-sm text-foreground">{{ emptyHint }}</p>
+        <p class="text-sm font-medium text-muted-foreground">{{ emptyHint }}</p>
       </div>
       <template v-else>
         <!-- 左栏:列表(单行预览),滚动到底分页加载 -->
         <div
           ref="listEl"
-          class="flex w-2/5 shrink-0 flex-col overflow-y-auto border-r border-border p-2"
+          class="flex w-2/5 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border/80 p-2"
           @scroll="handleScroll"
         >
           <ClipboardListItem

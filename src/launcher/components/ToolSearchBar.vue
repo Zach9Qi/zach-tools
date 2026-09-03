@@ -31,17 +31,17 @@ defineExpose({ focus: () => input.value?.focus() });
   <div
     v-if="activeModule"
     data-tauri-drag-region
-    class="flex h-16 shrink-0 items-center gap-3 px-5"
+    class="flex h-16 shrink-0 items-center gap-3.5 px-5.5"
   >
     <!-- 工具徽章,点击退出(Esc / 空框退格同效) -->
     <button
       type="button"
-      class="flex shrink-0 items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-sm text-foreground"
+      class="flex shrink-0 items-center gap-2 rounded-lg border border-border/60 bg-muted px-2.5 py-1 text-sm font-medium text-foreground shadow-2xs transition-all duration-150 hover:bg-accent hover:text-accent-foreground active:scale-98"
       title="退出(Esc)"
       @mousedown.prevent
       @click="close"
     >
-      <component :is="toolIcon" class="size-4" />
+      <component :is="toolIcon" class="size-4 shrink-0 text-foreground" />
       {{ activeModule.item.title }}
     </button>
     <SearchInput
@@ -50,7 +50,10 @@ defineExpose({ focus: () => input.value?.focus() });
       :placeholder="placeholder"
       @keydown="handleKeydown"
     />
-    <div class="flex shrink-0 items-center gap-1" title="全局唤起 / 收起快捷键">
+    <div
+      class="flex shrink-0 items-center gap-1.5 opacity-80 transition-opacity hover:opacity-100"
+      title="全局唤起 / 收起快捷键"
+    >
       <KeyboardKey>Alt</KeyboardKey>
       <KeyboardKey>Enter</KeyboardKey>
     </div>
