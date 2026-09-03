@@ -60,7 +60,7 @@ CI(`.github/workflows/ci.yml`)在 **windows-latest 与 ubuntu-24.04** 双平台�
 ## 配置文件
 
 - 配置文件必须是 `tauri.conf.json5`(`config-json5` feature),**每个配置项写中文注释**说明用途与取值理由(现有文件为范例)。不要改回 `tauri.conf.json`:`tauri-apps/tauri-action` 对 `.json` 走 `JSON.parse`,带注释会在 Release 打包阶段直接失败;`.json5` 才会走 JSON5 解析。本地编辑器可把该文件关联成 jsonc 以用 `$schema` 补全(`.vscode/settings.json` 不入库)
-- 窗口行为类配置(尺寸、透明、置顶)改动时,检查前端是否有对应的镜像常量或 CSS 假设(宽度 ↔ `WINDOW_WIDTH`,高度上限 ↔ 面板 `max-h`)
+- 窗口行为类配置(尺寸、透明、置顶)改动时,检查前端是否有对应的 CSS 假设(宽度以 `tauri.conf.json5` 为唯一定义处、前端读 `window.innerWidth`;高度上限 ↔ 面板 `max-h-150`)
 
 ---
 

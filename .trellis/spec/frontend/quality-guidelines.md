@@ -29,7 +29,7 @@
 - 注释一律中文,解释「为什么」与约束,不复述代码;好的参照:`useKeymap.ts` 对 Tab 拦截、输入法组词、Ctrl 组合放行的三段注释
 - 导出的接口、类型、函数、常量必须有文档注释;跨端结构体逐字段注释(见[类型安全](./type-safety.md))
 - template 里的非显然布局决策用 HTML 注释写在结构旁(`LauncherPanel.vue` 对 `max-h` 单一定义处、border 而非 ring 的注释)
-- 魔法数字提为带注释的命名常量:`PAGE_SIZE` / `REFRESH_DEBOUNCE_MS`(`useClipboardPage.ts`)、`WINDOW_WIDTH`(`src/lib/window.ts`)、`ROW_CAPACITY`(`useResults.ts`)
+- 魔法数字提为带注释的命名常量:`PAGE_SIZE` / `REFRESH_DEBOUNCE_MS`(`useClipboardPage.ts`)、`ROW_CAPACITY`(`useResults.ts`)。窗口宽度不以前端常量为副本:`tauri.conf.json5` 的 `width` 是唯一定义处,`src/lib/window.ts` 读 `window.innerWidth`
 
 ---
 
