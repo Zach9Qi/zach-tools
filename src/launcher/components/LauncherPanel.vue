@@ -49,8 +49,8 @@ async function activate(tool: ToolItem, source: SectionKey) {
        同时不影响 html 根，圆角外的透明角不被画上底色；body 不设底色。 -->
   <section
     ref="root"
-    class="flex max-h-128 w-full flex-col overflow-hidden rounded-2xl border border-border bg-background text-foreground scheme-light-dark"
-    :class="activeModule ? 'h-128' : ''"
+    class="flex max-h-150 w-full flex-col overflow-hidden rounded-2xl border border-border bg-background text-foreground scheme-light-dark"
+    :class="activeModule ? 'h-150' : ''"
   >
     <!-- 主页与工具页各自成组:搜索栏随态切换重建,挂载时自动聚焦 -->
     <template v-if="activeModule">

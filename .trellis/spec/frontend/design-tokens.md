@@ -81,8 +81,9 @@
 
 **字号**:
 
-- 根入口 `--font-size-base`(默认 `100%`),`html { font-size: var(--font-size-base) }`。改此值后**间距 / 字号 / rem 尺寸**(如 `max-h-128`、图标 `size-*`)等比缩放;圆角档位偏移、滚动条宽度是像素级微调，不跟着缩
+- 根入口 `--font-size-base`(默认 `100%`),`html { font-size: var(--font-size-base) }`。改此值后**间距 / 字号 / rem 尺寸**(如 `max-h-150`、图标 `size-*`)等比缩放;圆角档位偏移、滚动条宽度是像素级微调，不跟着缩
 - 键帽用 `text-2xs`(`0.625rem` / 行高 1);禁止 `text-[Npx]`,缺档就在 `@theme` 加 token
+- 面板高度上限用 `max-h-150` / `h-150`(对应 `calc(var(--spacing) * 150) = 37.5rem = 600px`，Tailwind v4 内置支持数值刻度)
 - 其余用 Tailwind 默认刻度(`text-xs` / `text-sm` / `text-lg` …)
 
 **字体**:`--font-sans`(系统 UI 栈,Preflight 作用于 `html`)、`--font-mono`(等宽,剪贴板文本预览等后续可用)。原始值在 `:root` 的 `--font-family-sans` / `--font-family-mono`。

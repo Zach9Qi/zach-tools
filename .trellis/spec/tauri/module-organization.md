@@ -51,7 +51,7 @@ src-tauri/src/
 ## 常量归属
 
 - 模块内约定值定义在使用它的模块顶部,`pub` 与否按需要:窗口 label 与事件名在 `launcher_window.rs`,分页上限在 `commands/clipboard.rs`,容量与截断上限在 `clipboard_store.rs`(供 ingest 引用,`pub`)
-- 与前端共享的值(窗口宽度、事件名、默认分页大小)无法编译期共享,靠**两侧注释互指**保持同步:`tauri.conf.json5` 的 `width` ↔ `src/lib/window.ts` 的 `WINDOW_WIDTH`,改一侧必须检查另一侧
+- 与前端共享的值(窗口宽度、事件名、默认分页大小)无法编译期共享,靠**两侧注释互指**保持同步:窗口宽度以 `tauri.conf.json5` 的 `width` 为唯一定义处（前端 `src/lib/window.ts` 动态读 `window.innerWidth`，不再另存副本）；高度上限由前端 CSS（`src/launcher/components/LauncherPanel.vue` 的 `max-h-150`）封顶。改一侧必须检查另一侧
 
 ---
 
