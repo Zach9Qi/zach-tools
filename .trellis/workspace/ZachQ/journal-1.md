@@ -42,3 +42,41 @@
 ### Next Steps
 
 - 无。后续换肤 JS 是独立任务，接口是 :root 变量名
+
+
+## Session 2: 调整启动器窗口尺寸为 800x600
+<!-- trellis-session: v=2 fp=3cd10de0d24722a6 -->
+
+**Date**: 2026-09-03
+**Task**: 调整启动器窗口尺寸为 800x600
+**Branch**: `main`
+
+### Summary
+
+将启动器窗口从 720x512 调整为 800x600，面板改用 max-h-150/h-150，并同步去掉规范里已删除的 WINDOW_WIDTH 引用。
+
+### Main Changes
+
+- tauri.conf.json5 窗口改为 width 800、height 600
+- LauncherPanel.vue 高度上限改为 max-h-150 / 工具页 h-150
+- 质量规范去掉已删除的 WINDOW_WIDTH 前端常量引用
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7d0b0e7` | style(launcher): 调整启动器尺寸为 800x600 并使用 max-h-150 |
+| `7e806a7` | docs(spec): 去掉已删除的 WINDOW_WIDTH 前端常量引用 |
+
+### Testing
+
+- [OK] bun run lint / test / build 通过
+- [OK] cargo check / fmt / clippy / test 通过
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 无
