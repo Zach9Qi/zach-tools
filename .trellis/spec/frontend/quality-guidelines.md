@@ -20,7 +20,7 @@
 
 **Node 侧 TS(`tsconfig.node.json`)**:`strict` + `types: ["node"]` + `lib: ["ES2022"]`(无 DOM),`scripts/` 下的脚本只用 Node 内置模块、不依赖 Bun 专有 API。它与 `tsconfig.app.json` 一样被根 `tsconfig.json` 的 `references` 引用,由 `vue-tsc -b` 统一执行(TS 6 的 `-b` 不再要求被引用项目开 `composite`,`noEmit: true` 可直接写在配置里);`-b` 会写增量产物,两份配置的 `tsBuildInfoFile` 都指到 `node_modules/.tmp/` 以免在仓库根落 tsbuildinfo。新增 Node 侧 TS 文件时要加进它的 `include`,否则不会被任何命令类型检查。
 
-**测试(Vitest,配置在根级 `vitest.config.ts`)**:测试文件与被测源码同目录、命名 `xxx.test.ts`、用 `@/` 别名导入;配置独立于 `vite.config.ts`,不牵动 Tauri dev 设置。当前覆盖 `lib/` 纯函数(`tools/clipboard/lib/time.test.ts`、`tools/match.test.ts`),新增纯函数逻辑应同步补用例;纯逻辑尽量下沉为无依赖纯函数(`formatRelativeTime` 带 `now` 参数即为可测设计)。组件测试(@vue/test-utils)尚未引入,是独立决策。
+**测试(Vitest,配置在根级 `vitest.config.ts`)**:测试文件与被测源码同目录、命名 `xxx.test.ts`、用 `@/` 别名导入;配置独立于 `vite.config.ts`,不牵动 Tauri dev 设置。当前覆盖 `lib/` 纯函数(`tools/clipboard/lib/time.test.ts`、`tools/clipboard/lib/api.test.ts`、`tools/match.test.ts`),新增纯函数逻辑应同步补用例;纯逻辑尽量下沉为无依赖纯函数(`formatRelativeTime` 带 `now` 参数即为可测设计)。需要模拟 Tauri 运行时的用例用 `vi.stubGlobal("__TAURI_INTERNALS__", {...})` + `vi.stubGlobal("window", globalThis)`(`@tauri-apps/api` 经 `window.__TAURI_INTERNALS__` 判定运行时与调用 `convertFileSrc`),`afterEach` 里 `vi.unstubAllGlobals()` 复原(`api.test.ts` 为范例)。组件测试(@vue/test-utils)尚未引入,是独立决策。
 
 ---
 

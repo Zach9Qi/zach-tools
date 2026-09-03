@@ -6,8 +6,8 @@
 
 ## AppState
 
-- 共享状态定义成结构体(`src-tauri/src/state.rs`),setup 里 `app.manage(AppState::new(pool))` 注册一次;命令用 `state: State<'_, AppState>` 注入,服务层经 `app.state::<AppState>()` 或 `app.try_state`(setup 早期可能未注册)获取。**不用全局 static**
-- 锁包**字段**不包整个结构体,缩小锁粒度:`paste_target: Mutex<Option<isize>>`、`pending_self_write: Mutex<Option<String>>`,只读的连接池裸放
+- 共享状态定义成结构体(`src-tauri/src/state.rs`),setup 里 `app.manage(AppState::new(pool, image_dir))` 注册一次;命令用 `state: State<'_, AppState>` 注入,服务层经 `app.state::<AppState>()` 或 `app.try_state`(setup 早期可能未注册)获取。**不用全局 static**
+- 锁包**字段**不包整个结构体,缩小锁粒度:`paste_target: Mutex<Option<isize>>`、`pending_self_write: Mutex<Option<String>>`,只读的连接池与图片目录(`image_dir: PathBuf`,setup 已 `create_dir_all`)裸放
 - 字段不直接暴露,一律经语义化方法访问(`remember_paste_target` / `take_self_write_if_matches`),锁的存在是实现细节
 - 锁中毒恢复是既定模式:保存的都是简单值、不存在被破坏的不变量,统一走 `lock_or_recover`(`PoisonError::into_inner`),不 `unwrap` 锁
 - **锁不跨 `await` 持有**:现有方法都是同步短临界区,新增字段保持这个形态;需要跨 await 的状态改用 tokio 的异步原语再议
@@ -20,6 +20,8 @@
 |------|------|------|
 | 含 IO / 数据库的命令 | `async fn` 命令 + `.await` | `commands/clipboard.rs` 全部命令 |
 | 同步阻塞库(arboard)、Win32 调用、sleep | `tauri::async_runtime::spawn_blocking` | `paste.rs` 的剪贴板写入与焦点还原 |
+| CPU 密集(图片 hash、PNG 编解码、缩略图) | `tauri::async_runtime::spawn_blocking`,大对象 move 进去再 move 出来 | `clipboard_ingest.rs` 图片分支、`paste.rs` 解码原图 |
+| 少量文件删除(`remove_file` 1~2 次) | 直接在 async 里调(知情例外:开销与一次 SQL 同级,不值得一次线程切换) | `image_store::remove_files` 的调用点 |
 | setup 里需要 async 初始化 | `tauri::async_runtime::block_on`(仅 setup / RunEvent 等同步上下文) | `lib.rs` 的 `db::init_pool` 与退出时 `pool.close()` |
 | 常驻后台异步循环 | `tauri::async_runtime::spawn` | `clipboard_ingest.rs` 的入库循环 |
 | 需要 OS 消息循环的常驻监听 | `std::thread::Builder::new().name(...).spawn` | `win_monitor.rs`(线程要命名) |
@@ -47,6 +49,8 @@
 1. 写入前 `mark_self_write(hash)` 打标
 2. 写入失败 `clear_self_write()` 回滚标记,避免误吞下一次真实复制
 3. 监听侧 `take_self_write_if_matches(&hash)` 命中即消费标记并跳过入库
+
+标记与内容类型无关,文本与图片共用:文本 hash 是 `clipboard_store::hash_text`,图片 hash 是 `image_store::hash_image(宽 ‖ 高 ‖ RGBA)`,**两侧必须调同一个函数**——粘贴侧从落盘 PNG 解码后再算,能命中依赖 PNG 无损 + arboard Windows 写 PNG/DIBV5、读优先 PNG 的像素往返无损(`image_store` 有 PNG 往返 hash 一致的单测锁住)。
 
 任何「自己触发系统事件再被自己监听」的新功能,先套这个标记-消费协议。
 

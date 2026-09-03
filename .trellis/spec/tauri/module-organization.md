@@ -12,10 +12,11 @@ src-tauri/src/
 ├── lib.rs               # Builder 装配:plugin、db 初始化、manage、generate_handler、setup、RunEvent
 ├── commands.rs          # 模块根:pub mod clipboard; pub mod launcher;
 ├── commands/            # 命令层,按领域一个文件
-├── services.rs          # 模块根:声明五个服务
+├── services.rs          # 模块根:声明六个服务
 ├── services/
 │   ├── clipboard_store.rs   # 纯存储:只依赖 sqlx,不依赖 tauri,带完整单测
-│   ├── clipboard_ingest.rs  # 采集链路编排:平台线程 → 通道 → 入库循环
+│   ├── image_store.rs       # 纯 fs + image crate:像素 hash、PNG 编码、缩略图、删文件;带临时目录单测
+│   ├── clipboard_ingest.rs  # 采集链路编排:平台线程 → 通道 → 入库循环(图片分支落盘后入库)
 │   ├── launcher_window.rs   # 窗口开合编排(show/hide/toggle/失焦/托盘联动)
 │   ├── paste.rs             # 粘贴编排:写剪贴板 → 还原焦点 → 注入 Ctrl+V
 │   └── tray.rs              # 系统托盘
@@ -41,16 +42,17 @@ src-tauri/src/
 
 服务层内部有意区分两类,新增服务时先归类:
 
-1. **纯逻辑服务**(`clipboard_store.rs`):不依赖任何 tauri 类型,函数签名只收 `&SqlitePool` 与普通参数,错误返回底层错误类型(`sqlx::Error`)由上层转换。可直接用内存库单测,文件内带 `#[cfg(test)] mod tests`
+1. **纯逻辑服务**(`clipboard_store.rs`、`image_store.rs`):不依赖任何 tauri 类型,函数签名只收 `&SqlitePool` / `&Path` 与普通参数,错误返回底层错误类型(`sqlx::Error` / `io::Error` / `ImageError`)由上层转换。可直接用内存库 / 临时目录单测,文件内带 `#[cfg(test)] mod tests`
 2. **编排服务**(`launcher_window.rs`、`paste.rs`、`clipboard_ingest.rs`、`tray.rs`):需要操作窗口 / 事件 / 状态,依赖 tauri 类型,但一律用泛型 `R: Runtime` 收参(`AppHandle<R>` / `WebviewWindow<R>`),不写死具体 runtime
 
-能下沉到纯逻辑的部分尽量下沉:`paste.rs` 的剪贴板写入是编排,但 hash 计算在 `clipboard_store::hash_text`。
+能下沉到纯逻辑的部分尽量下沉:`paste.rs` 的剪贴板写入是编排,但 hash 计算在 `clipboard_store::hash_text` / `image_store::hash_image`(后者是图片 hash 的唯一定义处,采集侧与粘贴侧共用,否则自写标记对不上)。
 
 ---
 
 ## 常量归属
 
 - 模块内约定值定义在使用它的模块顶部,`pub` 与否按需要:窗口 label 与事件名在 `launcher_window.rs`,分页上限在 `commands/clipboard.rs`,容量与截断上限在 `clipboard_store.rs`(供 ingest 引用,`pub`)
+- 与配置文件共享的值同样靠注释互指:`image_store::IMAGE_DIR_NAME`(`clipboard-images`)↔ `tauri.conf.json5` 的 `assetProtocol.scope`,改目录名两处同改
 - 与前端共享的值(窗口宽度、事件名、默认分页大小)无法编译期共享,靠**两侧注释互指**保持同步:窗口宽度以 `tauri.conf.json5` 的 `width` 为唯一定义处（前端 `src/lib/window.ts` 动态读 `window.innerWidth`，不再另存副本）；高度上限由前端 CSS（`src/launcher/components/LauncherPanel.vue` 的 `max-h-150`）封顶。改一侧必须检查另一侧
 
 ---

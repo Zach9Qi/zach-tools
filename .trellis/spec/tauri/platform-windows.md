@@ -8,7 +8,7 @@
 
 `src-tauri/src/platform.rs` 是唯一入口:
 
-- 平台无关的数据类型定义在 facade(`ClipboardCapture`)
+- 平台无关的数据类型定义在 facade(`ClipboardCapture` 枚举:`Text` / `Image`);变体只由 Windows 构造时加 `#[cfg_attr(not(windows), allow(dead_code))]`,见[质量与安全](./quality-and-security.md)
 - `#[cfg(windows)]` 声明真实实现模块并 `pub use` 逐个导出函数;`#[cfg(not(windows))]` 导出 `stub.rs` 的同签名空实现,**保证任何平台都能编译**
 - 业务层仅 Windows 才有意义的钩子（如 `install_platform_hooks`）：函数和调用点都加 `#[cfg(windows)]`，非 Windows 不提供空实现。不要写“同签名但函数体整段 `#[cfg(windows)]`”，那会在 Ubuntu CI 报 `unused_variables`；若确实需要跨平台同签名，走 facade/stub 模式，stub 参数用 `_param` 命名
 - stub 的空实现不是静默:有副作用缺失的记 `log::warn!`(`spawn_monitor`),纯查询返回中性值(`foreground_window` → `None`,`focus_window` → `false`)
@@ -24,6 +24,7 @@
 - **message-only 窗口**:只收消息不可见的监听场景用 `HWND_MESSAGE` 父窗口注册窗口类 + `WM_XXX` 消息循环
 - **事件去抖**:系统可能对一次动作发多条消息,用系统提供的序列号判重(`GetClipboardSequenceNumber`)
 - **资源占用重试**:剪贴板等共享资源被占用时小退避线性重试(`READ_RETRIES = 3`,`READ_RETRY_DELAY * attempt`),重试耗尽返回 None 记 debug 日志,不报错
+- **多格式读取顺序**:剪贴板同时有文本与位图(Excel 复制单元格)只取文本,`read_capture` 先 `get_text`、非空即返回,`ContentNotAvailable` 或空串才 `get_image`,两者皆无(文件列表等)返回 None;`ContentNotAvailable` 是「格式不存在」不是错误,不走重试
 - **按键注入**:`SendInput` 一次提交完整按下/抬起序列;返回值与预期条数比对,不足记 warn(`win_input.rs` 的 `send_ctrl_v`)
 - 失败路径一律**日志 + 降级**,平台层不 panic:焦点还原失败照样注入粘贴(`paste.rs` 对 `focus_window` 返回 false 的处理)
 

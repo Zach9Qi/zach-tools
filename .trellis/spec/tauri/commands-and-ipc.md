@@ -27,7 +27,7 @@
 }
 ```
 
-- 多命令共用的取数逻辑抽成模块内私有辅助函数(`get_text_content`:双层 Option 区分「不存在」与「类型不支持」,分别映射成不同错误)
+- 多命令共用的取数逻辑抽成模块内私有辅助函数(`get_content`:双层 Option 区分「不存在」与「类型不支持」,分别映射成 `ItemNotFound` / `UnsupportedKind`;返回的 `ClipContent` 交给 `paste::copy_to_clipboard` 按文本 / 图片分派,命令层不认识内容类型的差异)
 
 ---
 
@@ -53,7 +53,7 @@
 
 - 列表与事件载荷统一走「预览投影」:文本截断到 `PREVIEW_MAX_CHARS`(5000 字符)并附原文总长,原文不出库
 - 原文按 id 用单独命令现取(粘贴 / 复制时后端内部取用,不回传前端)
-- 大二进制(图片)落盘存路径,库和 IPC 只走路径字符串
+- 大二进制(图片)落盘存路径,库和 IPC 只走路径字符串;前端经 `toAssetUrl`(`convertFileSrc` 封装,`lib/api.ts`)用 asset 协议按需加载,**不走 base64 过 IPC**。可读范围由 `tauri.conf.json5` 的 `assetProtocol.scope`(仅 `$APPLOCALDATA/clipboard-images/**`)管控
 
 新增「列表 + 详情」类功能时沿用:列表载荷带预览与元数据,重内容按 id 二次获取或后端内部消化。
 

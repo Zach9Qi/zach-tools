@@ -9,13 +9,14 @@
 
 | 维度 | 选型 | 备注 |
 |------|------|------|
-| 框架 | Tauri 2(`config-json5` + `tray-icon` feature) | 桌面常驻托盘应用,窗口默认隐藏 |
+| 框架 | Tauri 2(`config-json5` + `tray-icon` + `protocol-asset` feature) | 桌面常驻托盘应用,窗口默认隐藏;asset 协议供前端加载落盘图片 |
 | 数据库 | sqlx 0.9 + SQLite(WAL) | 内嵌 migration,连接池经 AppState 共享 |
 | 错误 | thiserror | 统一 `AppError`,序列化为中文文案供前端直接展示 |
 | 日志 | log + tauri-plugin-log | debug 构建 Debug 级,发布 Info 级 |
-| 剪贴板 | arboard | 读写均在 `spawn_blocking` 中执行 |
+| 剪贴板 | arboard | 文本与图片读写均在 `spawn_blocking` 中执行 |
+| 图片 | image 0.25(仅 `png` feature) | PNG 编解码与缩略图,落盘 `app_local_data_dir/clipboard-images/`;arboard 已依赖同版本 |
 | 平台 API | windows crate(Win32) | 隔离在 `platform/`,其余平台走 stub |
-| 内容去重 | blake3 | 文本 hash 作全局去重键与自写标记 |
+| 内容去重 | blake3 | 文本 hash / 图片 `宽 ‖ 高 ‖ RGBA` hash 作全局去重键与自写标记 |
 
 ## 分层(调用方向自上而下)
 

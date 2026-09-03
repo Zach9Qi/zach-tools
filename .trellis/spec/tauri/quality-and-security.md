@@ -18,6 +18,8 @@ CI(`.github/workflows/ci.yml`)在 **windows-latest 与 ubuntu-24.04** 双平台�
 
 函数参数若只在 `#[cfg(windows)]` 体内使用，Ubuntu 编译会报 `unused_variables`（CI 开了 `-D warnings`）。处理原则：非 Windows 无事可做的函数，整个函数和调用点一起 `#[cfg(windows)]`（范例：`launcher_window.rs` 的 `install_platform_hooks` 与 `lib.rs` 调用点）；确需跨平台同签名的走 facade/stub。不要用 `let _ = param;` 或 `allow(unused_variables)` 压警告。
 
+同类陷阱：facade 里的枚举若变体**只由 Windows 实现构造**(stub 从不发送),非 Windows 会报 `variants never constructed`(`dead_code`)。这种情况给该类型加 `#[cfg_attr(not(windows), allow(dead_code))]` 并在注释里写明原因(范例:`platform.rs` 的 `ClipboardCapture`),精确到类型、只在该平台放行,不要整模块 allow。
+
 ---
 
 ## unwrap / expect 政策
@@ -50,8 +52,9 @@ CI(`.github/workflows/ci.yml`)在 **windows-latest 与 ubuntu-24.04** 双平台�
 - 新增 plugin 三步走:`Cargo.toml` 加 crate → `lib.rs` `.plugin(...)` 注册 → `capabilities/` 声明其权限;三步缺一前端调用即失败
 - 新用 core 能力(窗口操作等)同样先查权限标识再加进 capability,不图省事上宽泛权限
 - capability 文件带 `$schema`(指向 `gen/schemas/desktop-schema.json`)获得补全校验
+- **本地文件暴露给 WebView 走 asset 协议 + 目录级 scope**:`assetProtocol.scope` 只放行 `$APPLOCALDATA/clipboard-images/**`(`tauri` crate 需 `protocol-asset` feature;`$APPLOCALDATA` 即 `app_local_data_dir()`,与库同根),这是「按目录最小授权」的范例;前端经 `convertFileSrc` 拿 URL,不需要额外 capability,也不要为读文件引入 fs plugin
 
-**CSP 现状与债务(如实记录)**:`tauri.conf.json5` 当前 `"csp": null`(开发便利),配置注释已声明「生产建议收紧」。发布流水线(`bun run release` → `release.yml`)已就位,这项债务不再有「还没法发布」作缓冲——**正式发布前必须配置 CSP**(官方基线:`default-src 'self'`,连接放行 `ipc: http://ipc.localhost`);本项目无远程资源加载,收紧成本低。在那之前,不要引入依赖远程脚本 / 远程样式的实现,避免抬高收紧成本。
+**CSP 现状与债务(如实记录)**:`tauri.conf.json5` 当前 `"csp": null`(开发便利),配置注释已声明「生产建议收紧」。发布流水线(`bun run release` → `release.yml`)已就位,这项债务不再有「还没法发布」作缓冲——**正式发布前必须配置 CSP**(官方基线:`default-src 'self'`,连接放行 `ipc: http://ipc.localhost`;图片还要放行 `img-src 'self' asset: http://asset.localhost`,否则剪贴板缩略图 / 原图空白);本项目无远程资源加载,收紧成本低。在那之前,不要引入依赖远程脚本 / 远程样式的实现,避免抬高收紧成本。
 
 **IPC 边界校验**:前端传入的数值、枚举在命令层校验(clamp / 类型系统兜底),见[命令与 IPC](./commands-and-ipc.md)。
 
