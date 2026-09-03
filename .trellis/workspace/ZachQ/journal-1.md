@@ -67,6 +67,7 @@
 |------|---------|
 | `7d0b0e7` | style(launcher): 调整启动器尺寸为 800x600 并使用 max-h-150 |
 | `7e806a7` | docs(spec): 去掉已删除的 WINDOW_WIDTH 前端常量引用 |
+| `6f2641b` | style(launcher): 美化启动器主面板与剪贴板历史页面为 macOS 原生质感 |
 
 ### Testing
 
