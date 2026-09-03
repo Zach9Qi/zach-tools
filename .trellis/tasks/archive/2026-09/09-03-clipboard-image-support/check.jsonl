@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/tauri/quality-and-security.md", "reason": "检查门禁命令、capability/assetProtocol 最小权限、unwrap 政策"}
+{"file": ".trellis/spec/tauri/commands-and-ipc.md", "reason": "检查 Rust/TS 跨端结构与注释镜像一致"}
+{"file": ".trellis/spec/tauri/database.md", "reason": "检查存储层单测覆盖与 SQL 惯例"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "检查前端 lint/test/build 门禁与组件规范"}
+{"file": ".trellis/tasks/09-03-clipboard-image-support/prd.md", "reason": "验收标准 AC1~AC12 对照"}
