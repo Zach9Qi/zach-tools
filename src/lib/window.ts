@@ -16,8 +16,7 @@ export function hideLauncher(): Promise<void> {
  * 把窗口高度贴到页面根元素高度（uTools 式自适应），宽度始终不变。
  * 宽度直接读当前视口：无边框且不可缩放，CSS 视口宽 = 窗口逻辑宽，
  * 唯一来源是 tauri.conf.json5 的 width，前端不再另存一份。
- * 高度上限不在这里维护：面板 max-h 封顶、阴影边距由外层 p-5 提供，
- * 全部由 CSS 决定，传入的测量值天然不会超过上限。
+ * 高度上限不在这里维护：面板 max-h 封顶，由 CSS 决定，传入的测量值天然不会超过上限。
  */
 export function resizeLauncherToContent(contentHeight: number): Promise<void> {
   if (!isTauriRuntime()) {

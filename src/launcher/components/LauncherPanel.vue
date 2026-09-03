@@ -15,13 +15,13 @@ import { isViewModule, type ToolItem } from "@/tools/types";
 const searchBar = useTemplateRef<{ focus: () => void }>("searchBar");
 const root = useTemplateRef<HTMLElement>("root");
 
-const { homeQuery, hide } = useLauncher({
+const { homeQuery } = useLauncher({
   onOpen: () => searchBar.value?.focus(),
 });
 
 const { activeModule, toolQuery, open } = useToolView();
 
-// 窗口高度跟随根元素(面板 + 阴影边距),上限由面板的 CSS max-h 封顶
+// 窗口高度跟随面板根元素,上限由面板的 CSS max-h 封顶
 useAutoHeight(root);
 
 /**
@@ -41,28 +41,26 @@ async function activate(tool: ToolItem, source: SectionKey) {
 </script>
 
 <template>
-  <!-- 外层透明边缘：给面板阴影留渲染空间，点击该区域收起启动器。
-       不设 h-full：高度由内容决定，窗口高度直接贴这一层（p-5 边距已含在内） -->
-  <div ref="root" class="flex w-full p-5" @mousedown.self="hide">
-    <!-- scheme-light-dark 只放在面板根：让 light-dark() 原始变量(background / foreground 等)
-         与表单控件跟随系统主题；同时不影响 html 根，保证窗口透明边缘不被画上底色。
-         面板自身显式 bg-background text-foreground，body 不设底色。 -->
-    <!-- max-h 是窗口高度上限的唯一定义处：封顶后内部区域滚动，窗口不再变高。
-         工具页态强制撑满到上限：列表在固定视口内滚动，打字过滤时窗口高度不抖动 -->
-    <section
-      class="flex max-h-128 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-background text-foreground scheme-light-dark shadow-panel ring-1 ring-border"
-      :class="activeModule ? 'h-128' : ''"
-    >
-      <!-- 主页与工具页各自成组:搜索栏随态切换重建,挂载时自动聚焦 -->
-      <template v-if="activeModule">
-        <ToolSearchBar ref="searchBar" />
-        <component :is="activeModule.page" :query="toolQuery" />
-      </template>
-      <template v-else>
-        <HomeSearchBar ref="searchBar" v-model="homeQuery" />
-        <ResultsPanel :query="homeQuery" @activate="activate" />
-      </template>
-      <LauncherFooter />
-    </section>
-  </div>
+  <!-- 面板就是页面根：无阴影、无外边距，窗口尺寸直接贴这一层。
+       不设 h-full：高度由内容决定；max-h 是窗口高度上限的唯一定义处，封顶后内部区域滚动。
+       工具页态强制撑满到上限：列表在固定视口内滚动，打字过滤时窗口高度不抖动。
+       描边用 border 而非 ring：ring 画在元素外侧，面板贴窗口边会被裁掉。
+       scheme-light-dark 只放在面板根：让 light-dark() 原始变量与表单控件跟随系统主题，
+       同时不影响 html 根，圆角外的透明角不被画上底色；body 不设底色。 -->
+  <section
+    ref="root"
+    class="flex max-h-128 w-full flex-col overflow-hidden rounded-2xl border border-border bg-background text-foreground scheme-light-dark"
+    :class="activeModule ? 'h-128' : ''"
+  >
+    <!-- 主页与工具页各自成组:搜索栏随态切换重建,挂载时自动聚焦 -->
+    <template v-if="activeModule">
+      <ToolSearchBar ref="searchBar" />
+      <component :is="activeModule.page" :query="toolQuery" />
+    </template>
+    <template v-else>
+      <HomeSearchBar ref="searchBar" v-model="homeQuery" />
+      <ResultsPanel :query="homeQuery" @activate="activate" />
+    </template>
+    <LauncherFooter />
+  </section>
 </template>

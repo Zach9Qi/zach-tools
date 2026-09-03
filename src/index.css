@@ -35,20 +35,18 @@
   /* warning-foreground: 警告色上的文字 */
   --warning-foreground: var(--color-zinc-900);
 
-  /* —— 非颜色原始层:圆角基准、根字号、字体族、面板投影 —— */
+  /* —— 非颜色原始层:圆角基准、根字号、字体族 —— */
 
   /* 圆角单一基准;语义层按档位 calc 派生,组件类名不变 */
   --radius: 0.5rem;
-  /* 根字号入口;默认 100% 保持现有视觉。改此值后间距/字号/rem 尺寸等比,圆角偏移与阴影仍是 px */
+  /* 根字号入口;默认 100% 保持现有视觉。改此值后间距/字号/rem 尺寸等比,圆角偏移仍是 px */
   --font-size-base: 100%;
   /* 系统 UI 栈;语义层映射为 --font-sans,Preflight 作用于 html */
-  --font-family-sans: system-ui, -apple-system, "Segoe UI", sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-family-sans:
+    system-ui, -apple-system, "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
   /* 等宽栈;语义层映射为 --font-mono,剪贴板文本预览等后续可用 */
   --font-family-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  /* 面板投影:形状用 px(绑窗口透明边);颜色走内置黑 + --alpha,浅 20% / 深 50% */
-  --panel-shadow: 0 12px 32px -8px
-    light-dark(--alpha(var(--color-black) / 20%), --alpha(var(--color-black) / 50%));
 }
 
 /* 语义层:只做映射与派生,零具体颜色值。inline 让工具类直接输出 var(--background),子树覆盖即可换肤 */
@@ -76,8 +74,6 @@
 
   --font-sans: var(--font-family-sans);
   --font-mono: var(--font-family-mono);
-
-  --shadow-panel: var(--panel-shadow);
 }
 
 /* 字号刻度不属于皮肤,允许直接写值 */
@@ -92,7 +88,7 @@
     font-size: var(--font-size-base);
   }
 
-  /* 不设 background / color:窗口透明边缘不能有底色,且 body 无 color-scheme 时 light-dark 只会走浅色支 */
+  /* 不设 background / color:面板圆角外的透明角不能有底色,且 body 无 color-scheme 时 light-dark 只会走浅色支 */
   body {
     cursor: default;
     -webkit-font-smoothing: antialiased;

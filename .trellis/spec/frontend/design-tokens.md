@@ -27,7 +27,7 @@
 - **派生不复制**:圆角档位由 `--radius` 算出;`muted` 与 `accent` 初值相同但各自独立声明(角色不同,允许日后分叉)
 - **`@theme inline`** 而非 `@theme`:工具类直接输出 `var(--background)`,任意子树覆盖原始变量都能生效
 - **深浅色靠 `light-dark()` + `color-scheme`**:`light-dark()` 在消费元素处求值,面板根的 `scheme-light-dark` 决定走哪支;强制浅/深把该类换成 `scheme-light` / `scheme-dark`,不维护 `.dark` 双份
-- **`color-scheme` 只挂面板根**,不上 `html` / `body`(窗口透明边缘不能被画底色;`body` 无 `color-scheme` 时 `light-dark()` 只会走浅色支)
+- **`color-scheme` 只挂面板根**,不上 `html` / `body`(面板圆角外的透明角不能被画底色;`body` 无 `color-scheme` 时 `light-dark()` 只会走浅色支)
 - 字号刻度(`--text-2xs`)不属于皮肤,写在非 inline 的 `@theme` 里,允许直接写值
 
 ---
@@ -81,13 +81,13 @@
 
 **字号**:
 
-- 根入口 `--font-size-base`(默认 `100%`),`html { font-size: var(--font-size-base) }`。改此值后**间距 / 字号 / rem 尺寸**(如 `max-h-128`、图标 `size-*`)等比缩放;圆角档位偏移、`shadow-panel`、滚动条宽度是像素级微调,不跟着缩
+- 根入口 `--font-size-base`(默认 `100%`),`html { font-size: var(--font-size-base) }`。改此值后**间距 / 字号 / rem 尺寸**(如 `max-h-128`、图标 `size-*`)等比缩放;圆角档位偏移、滚动条宽度是像素级微调，不跟着缩
 - 键帽用 `text-2xs`(`0.625rem` / 行高 1);禁止 `text-[Npx]`,缺档就在 `@theme` 加 token
 - 其余用 Tailwind 默认刻度(`text-xs` / `text-sm` / `text-lg` …)
 
 **字体**:`--font-sans`(系统 UI 栈,Preflight 作用于 `html`)、`--font-mono`(等宽,剪贴板文本预览等后续可用)。原始值在 `:root` 的 `--font-family-sans` / `--font-family-mono`。
 
-**投影**:`shadow-panel` 映射 `--panel-shadow`。偏移 / 模糊用 `px`(延伸控制在窗口 20px 透明边内);颜色写成 `light-dark(--alpha(var(--color-black) / 20%), --alpha(var(--color-black) / 50%))`,浅淡深重,和别的 token 同一套路。
+**投影**:启动器外壳**不用阴影**——面板直接贴窗口边，没有透明外边距给阴影渲染，描边用 `border border-border`(`ring-*` 画在元素外侧会被窗口裁掉)。日后内部浮层(菜单 / 提示)若需阴影,颜色仍按 §2写成 `light-dark(--alpha(var(--color-black) / N%), …)`,形状用 `px`。
 
 ---
 
@@ -117,7 +117,7 @@
 }
 ```
 
-**调字号**:`--font-size-base: 87.5%;`。间距 / 字号 / rem 尺寸等比缩放;圆角 `± Npx` 与阴影保持像素级微调(阴影绑着窗口 20px 透明边,不宜跟字号跑)。
+**调字号**:`--font-size-base: 87.5%;`。间距 / 字号 / rem 尺寸等比缩放;圆角 `± Npx` 保持像素级微调。
 
 **强制浅 / 深**:改面板根的 `scheme-light-dark` 为 `scheme-light` 或 `scheme-dark`。不要引入 `.dark` 类,不要写 `dark:` 变体。JS 主题切换(后续任务)的接口就是这些 `:root` 变量名,用 `style.setProperty` 即可。
 
