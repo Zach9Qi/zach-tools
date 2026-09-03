@@ -1,6 +1,6 @@
 //! Windows 剪贴板监听：独立线程创建 message-only 窗口并注册
 //! `AddClipboardFormatListener`，在 Win32 消息循环中捕获 `WM_CLIPBOARDUPDATE`，
-//! 读取文本后发往入库通道。
+//! 按「文本优先、其次图片」读取内容后发往入库通道。
 
 use std::time::Duration;
 
@@ -81,8 +81,8 @@ fn run_message_loop(tx: &UnboundedSender<ClipboardCapture>) -> windows::core::Re
                 }
                 last_sequence = sequence;
 
-                if let Some(text) = read_clipboard_text() {
-                    if tx.send(ClipboardCapture { text }).is_err() {
+                if let Some(capture) = read_capture() {
+                    if tx.send(capture).is_err() {
                         log::warn!("剪贴板入库通道已关闭，监听线程退出");
                         return Ok(());
                     }
@@ -96,13 +96,26 @@ fn run_message_loop(tx: &UnboundedSender<ClipboardCapture>) -> windows::core::Re
     }
 }
 
-/// 读取剪贴板文本：非文本内容返回 None；被占用时小退避重试。
-fn read_clipboard_text() -> Option<String> {
+/// 读取剪贴板内容：有非空文本取文本，否则尝试位图，两者皆无（文件列表等）返回 None。
+/// 文本与图片并存（如 Excel 复制单元格）只记文本，与 uTools 的读取顺序一致。
+/// 被占用时小退避重试；重试耗尽返回 None 不报错。
+fn read_capture() -> Option<ClipboardCapture> {
     for attempt in 1..=READ_RETRIES {
-        match arboard::Clipboard::new().and_then(|mut clipboard| clipboard.get_text()) {
-            Ok(text) => return (!text.is_empty()).then_some(text),
-            // 剪贴板里不是文本（图片、文件等），Phase 1 直接忽略
-            Err(arboard::Error::ContentNotAvailable) => return None,
+        let attempt_result = arboard::Clipboard::new().and_then(|mut clipboard| {
+            match clipboard.get_text() {
+                Ok(text) if !text.is_empty() => return Ok(Some(ClipboardCapture::Text(text))),
+                // 空文本视同无文本，继续看有没有图片
+                Ok(_) | Err(arboard::Error::ContentNotAvailable) => {}
+                Err(err) => return Err(err),
+            }
+            match clipboard.get_image() {
+                Ok(image) => Ok(Some(ClipboardCapture::Image(image))),
+                Err(arboard::Error::ContentNotAvailable) => Ok(None),
+                Err(err) => Err(err),
+            }
+        });
+        match attempt_result {
+            Ok(capture) => return capture,
             Err(err) => {
                 log::debug!("读取剪贴板失败（第 {attempt} 次）: {err}");
                 std::thread::sleep(READ_RETRY_DELAY * attempt);

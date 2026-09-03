@@ -55,8 +55,18 @@
     ],
     // 安全相关配置
     "security": {
-      // Content Security Policy；null 表示不启用（开发方便，生产建议收紧）
-      "csp": null
+      // Content Security Policy；null 表示不启用（开发方便，生产建议收紧）。
+      // 收紧时必须放行图片资源协议：img-src 'self' asset: http://asset.localhost
+      "csp": null,
+      // 本地文件资源协议：前端经 convertFileSrc 加载剪贴板图片的原图与缩略图
+      "assetProtocol": {
+        // 开启协议（需配合 tauri crate 的 protocol-asset feature）
+        "enable": true,
+        // 只放行剪贴板图片目录，其余本地文件一律不可读。
+        // $APPLOCALDATA = app_local_data_dir()，与 SQLite 库同根（不用 $APPDATA / Roaming）；
+        // 目录名与 image_store::IMAGE_DIR_NAME 同步
+        "scope": ["$APPLOCALDATA/clipboard-images/**"]
+      }
     }
   },
   // 安装包/分发相关配置

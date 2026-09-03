@@ -22,9 +22,15 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            // 初始化数据库（建库 + migration）后注册全局状态
+            // 初始化数据库（建库 + migration）与图片目录后注册全局状态；
+            // 图片目录与库同根（app_local_data_dir），所有持久化数据集中在一个目录
             let pool = tauri::async_runtime::block_on(db::init_pool(app.handle()))?;
-            app.manage(AppState::new(pool));
+            let image_dir = app
+                .path()
+                .app_local_data_dir()?
+                .join(services::image_store::IMAGE_DIR_NAME);
+            std::fs::create_dir_all(&image_dir)?;
+            app.manage(AppState::new(pool, image_dir));
 
             // 启动剪贴板采集链路：平台监听线程 -> 通道 -> 入库循环
             services::clipboard_ingest::start(app.handle().clone());

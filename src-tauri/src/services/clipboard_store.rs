@@ -2,7 +2,8 @@
 //! 错误统一返回 `sqlx::Error`，由上层转换为 `AppError`。
 //!
 //! 列表与事件载荷统一走「预览投影」：`text_content` 截断为预览字符数并附带原文长度，
-//! 原文不出库，粘贴/复制按 id 用 [`text_content`] 现取。
+//! 原文不出库，粘贴/复制按 id 用 [`content`] 现取。图片二进制落盘，库中只存路径；
+//! 删除类操作通过 [`Removed`] 把被删行的图片路径交给服务层清理磁盘，存储层本身不碰 fs。
 
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
@@ -96,6 +97,49 @@ fn preview_query() -> sqlx::QueryBuilder<sqlx::Sqlite> {
     builder
 }
 
+/// 写入 image 行所需的字段（路径已由 image_store 落盘）
+#[derive(Debug, Clone, Copy)]
+pub struct ImageRow<'a> {
+    /// 像素 hash（全局去重键）
+    pub hash: &'a str,
+    /// 原图落盘路径
+    pub image_path: &'a str,
+    /// 缩略图落盘路径
+    pub thumbnail_path: &'a str,
+    /// 原图像素宽度
+    pub width: i64,
+    /// 原图像素高度
+    pub height: i64,
+}
+
+/// 按 id 现取的条目内容（粘贴/复制用），只覆盖能写回剪贴板的类型
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ClipContent {
+    /// 文本原文
+    Text(String),
+    /// 图片：原图落盘路径，由调用方读文件解码
+    Image { path: String },
+}
+
+/// 删除操作波及的磁盘文件：服务层据此清理，避免孤儿图片
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Removed {
+    /// 被删 image 行的原图与缩略图路径（文本行不产生路径）
+    pub image_files: Vec<String>,
+}
+
+impl Removed {
+    /// 从 `RETURNING image_path, thumbnail_path` 的行集收集非空路径
+    fn from_rows(rows: Vec<(Option<String>, Option<String>)>) -> Self {
+        let image_files = rows
+            .into_iter()
+            .flat_map(|(image, thumb)| [image, thumb])
+            .flatten()
+            .collect();
+        Self { image_files }
+    }
+}
+
 /// 计算文本内容的去重 hash（blake3 十六进制）
 pub fn hash_text(text: &str) -> String {
     blake3::hash(text.as_bytes()).to_hex().to_string()
@@ -135,6 +179,56 @@ pub async fn upsert_text(
     fetch_preview(pool, id)
         .await?
         .ok_or(sqlx::Error::RowNotFound)
+}
+
+/// 插入一条图片记录；content_hash 冲突时只刷新 last_used_at（兜底并发竞态，
+/// 常规去重应先走 [`touch_by_hash`] 避免白编码）。返回落库后的预览形态。
+pub async fn insert_image(
+    pool: &SqlitePool,
+    row: ImageRow<'_>,
+) -> Result<ClipboardItem, sqlx::Error> {
+    let now = now_ms();
+    let id: i64 = sqlx::query_scalar(
+        r"
+        INSERT INTO clipboard_items
+            (kind, image_path, thumbnail_path, image_width, image_height, content_hash, created_at, last_used_at)
+        VALUES ('image', ?1, ?2, ?3, ?4, ?5, ?6, ?6)
+        ON CONFLICT(content_hash) DO UPDATE SET last_used_at = excluded.last_used_at
+        RETURNING id
+        ",
+    )
+    .bind(row.image_path)
+    .bind(row.thumbnail_path)
+    .bind(row.width)
+    .bind(row.height)
+    .bind(row.hash)
+    .bind(now)
+    .fetch_one(pool)
+    .await?;
+
+    fetch_preview(pool, id)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)
+}
+
+/// 按内容 hash 查重：命中则刷新 last_used_at 并返回预览形态，未命中返回 None。
+/// 重复复制图片时先走这里，避免重新编码与写文件。
+pub async fn touch_by_hash(
+    pool: &SqlitePool,
+    hash: &str,
+) -> Result<Option<ClipboardItem>, sqlx::Error> {
+    let id: Option<i64> = sqlx::query_scalar(
+        "UPDATE clipboard_items SET last_used_at = ?1 WHERE content_hash = ?2 RETURNING id",
+    )
+    .bind(now_ms())
+    .bind(hash)
+    .fetch_optional(pool)
+    .await?;
+
+    match id {
+        Some(id) => fetch_preview(pool, id).await,
+        None => Ok(None),
+    }
 }
 
 /// 按主键取单条记录的预览形态
@@ -190,16 +284,23 @@ pub async fn list(
         .await
 }
 
-/// 取条目原文（粘贴/复制历史条目用）。
-/// 外层 None 表示条目不存在，内层 None 表示非文本条目。
-pub async fn text_content(
+/// 取条目可写回剪贴板的内容（粘贴/复制历史条目用）。
+/// 外层 None 表示条目不存在，内层 None 表示类型不支持写回（如 files）。
+pub async fn content(
     pool: &SqlitePool,
     id: i64,
-) -> Result<Option<Option<String>>, sqlx::Error> {
-    sqlx::query_scalar("SELECT text_content FROM clipboard_items WHERE id = ?1")
-        .bind(id)
-        .fetch_optional(pool)
-        .await
+) -> Result<Option<Option<ClipContent>>, sqlx::Error> {
+    let row: Option<(ClipboardKind, Option<String>, Option<String>)> =
+        sqlx::query_as("SELECT kind, text_content, image_path FROM clipboard_items WHERE id = ?1")
+            .bind(id)
+            .fetch_optional(pool)
+            .await?;
+
+    Ok(row.map(|(kind, text, image_path)| match kind {
+        ClipboardKind::Text => text.map(ClipContent::Text),
+        ClipboardKind::Image => image_path.map(|path| ClipContent::Image { path }),
+        ClipboardKind::Files => None,
+    }))
 }
 
 /// 刷新条目的最近使用时间（粘贴/复制历史条目后调用）。
@@ -222,18 +323,21 @@ pub async fn set_favorite(pool: &SqlitePool, id: i64, favorite: bool) -> Result<
     Ok(result.rows_affected() > 0)
 }
 
-/// 删除单条记录，返回是否确实删掉了。
-pub async fn delete(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query("DELETE FROM clipboard_items WHERE id = ?1")
-        .bind(id)
-        .execute(pool)
-        .await?;
-    Ok(result.rows_affected() > 0)
+/// 删除单条记录：None 表示条目不存在，Some 携带需要服务层清理的图片文件路径。
+pub async fn delete(pool: &SqlitePool, id: i64) -> Result<Option<Removed>, sqlx::Error> {
+    let row: Option<(Option<String>, Option<String>)> = sqlx::query_as(
+        "DELETE FROM clipboard_items WHERE id = ?1 RETURNING image_path, thumbnail_path",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.map(|row| Removed::from_rows(vec![row])))
 }
 
 /// 容量清理：保留最新的 keep 条非收藏记录，收藏项永不清理。
-pub async fn prune(pool: &SqlitePool, keep: i64) -> Result<(), sqlx::Error> {
-    sqlx::query(
+/// 返回被清理行涉及的图片文件路径，由服务层删除磁盘文件。
+pub async fn prune(pool: &SqlitePool, keep: i64) -> Result<Removed, sqlx::Error> {
+    let rows: Vec<(Option<String>, Option<String>)> = sqlx::query_as(
         r"
         DELETE FROM clipboard_items
         WHERE is_favorite = 0
@@ -243,12 +347,13 @@ pub async fn prune(pool: &SqlitePool, keep: i64) -> Result<(), sqlx::Error> {
               ORDER BY last_used_at DESC, id DESC
               LIMIT ?1
           )
+        RETURNING image_path, thumbnail_path
         ",
     )
     .bind(keep)
-    .execute(pool)
+    .fetch_all(pool)
     .await?;
-    Ok(())
+    Ok(Removed::from_rows(rows))
 }
 
 /// 转义 LIKE 通配符，配合 `ESCAPE '\'` 使用户输入按字面匹配
@@ -275,6 +380,24 @@ mod tests {
             .await
             .expect("执行 migration 失败");
         pool
+    }
+
+    /// 以固定尺寸 640×480 与 `images/<hash>[.thumb].png` 路径写入一条 image 行
+    async fn insert_sample_image(pool: &SqlitePool, hash: &str) -> ClipboardItem {
+        let image_path = format!("images/{hash}.png");
+        let thumbnail_path = format!("images/{hash}.thumb.png");
+        insert_image(
+            pool,
+            ImageRow {
+                hash,
+                image_path: &image_path,
+                thumbnail_path: &thumbnail_path,
+                width: 640,
+                height: 480,
+            },
+        )
+        .await
+        .expect("图片入库失败")
     }
 
     /// 手动指定条目的 last_used_at，构造确定的排序场景
@@ -380,7 +503,10 @@ mod tests {
         assert_eq!(texts, [Some("d"), Some("c")]);
 
         // 翻页前删掉头部条目 d：offset 分页会因此跳过 b，keyset 不受影响
-        assert!(delete(&pool, page1[0].id).await.expect("删除失败"));
+        assert!(delete(&pool, page1[0].id)
+            .await
+            .expect("删除失败")
+            .is_some());
 
         let cursor = ListCursor {
             last_used_at: page1[1].last_used_at,
@@ -427,16 +553,7 @@ mod tests {
                 .await
                 .expect("入库失败");
         }
-        // 当前只有文本入库路径，手动插一条 image 行验证 kind 过滤
-        sqlx::query(
-            r"
-            INSERT INTO clipboard_items (kind, image_path, content_hash, created_at, last_used_at)
-            VALUES ('image', 'shot.png', 'image-hash', 1, 1)
-            ",
-        )
-        .execute(&pool)
-        .await
-        .expect("插入 image 行失败");
+        insert_sample_image(&pool, "image-hash").await;
 
         let text_only = ListFilter {
             kind: Some(ClipboardKind::Text),
@@ -452,7 +569,10 @@ mod tests {
         };
         let images = list(&pool, image_only, 10, None).await.expect("查询失败");
         assert_eq!(images.len(), 1);
-        assert_eq!(images[0].image_path.as_deref(), Some("shot.png"));
+        assert_eq!(
+            images[0].image_path.as_deref(),
+            Some("images/image-hash.png")
+        );
 
         // 收藏 alpha 后，favorite_only 只回收藏条目
         let alpha_id = texts
@@ -501,11 +621,158 @@ mod tests {
         assert_eq!(item.text_length, Some(PREVIEW_MAX_CHARS + 100));
 
         // 原文按 id 现取，不受预览截断影响
-        let full = text_content(&pool, item.id)
+        let full = content(&pool, item.id)
             .await
             .expect("查询失败")
             .flatten()
             .expect("应有原文");
+        let ClipContent::Text(full) = full else {
+            panic!("文本条目应返回 Text 内容");
+        };
         assert_eq!(full.chars().count(), PREVIEW_MAX_CHARS as usize + 100);
+    }
+
+    #[tokio::test]
+    async fn insert_image_dedups_by_hash_and_touch_by_hash_bumps() {
+        let pool = memory_pool().await;
+
+        // 未命中的 hash 查重返回 None，不应产生任何行
+        assert!(touch_by_hash(&pool, "img-a")
+            .await
+            .expect("查重失败")
+            .is_none());
+
+        let first = insert_sample_image(&pool, "img-a").await;
+        assert_eq!(first.kind, ClipboardKind::Image);
+        assert_eq!(first.image_path.as_deref(), Some("images/img-a.png"));
+        assert_eq!(
+            first.thumbnail_path.as_deref(),
+            Some("images/img-a.thumb.png")
+        );
+        assert_eq!(
+            (first.image_width, first.image_height),
+            (Some(640), Some(480))
+        );
+        assert!(first.text_preview.is_none());
+        assert!(first.text_length.is_none());
+
+        // 人为调旧后查重命中：同一 id 上浮，不新增行
+        sqlx::query("UPDATE clipboard_items SET last_used_at = 1 WHERE content_hash = 'img-a'")
+            .execute(&pool)
+            .await
+            .expect("调整时间失败");
+        let touched = touch_by_hash(&pool, "img-a")
+            .await
+            .expect("查重失败")
+            .expect("应命中已有图片");
+        assert_eq!(touched.id, first.id);
+        assert!(touched.last_used_at > 1);
+
+        // 并发竞态兜底：同 hash 再次 insert 也只是刷新时间
+        let again = insert_sample_image(&pool, "img-a").await;
+        assert_eq!(again.id, first.id);
+
+        let all = list(&pool, ListFilter::default(), 10, None)
+            .await
+            .expect("查询失败");
+        assert_eq!(all.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn content_distinguishes_missing_unsupported_and_kinds() {
+        let pool = memory_pool().await;
+        let text = upsert_text(&pool, "hello", &hash_text("hello"))
+            .await
+            .expect("文本入库失败");
+        let image = insert_sample_image(&pool, "img-c").await;
+        // files 尚无入库路径，手插一行验证「存在但不支持写回」分支
+        let files_id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO clipboard_items (kind, file_paths, content_hash, created_at, last_used_at)
+            VALUES ('files', '["a.txt"]', 'files-hash', 1, 1)
+            RETURNING id
+            "#,
+        )
+        .fetch_one(&pool)
+        .await
+        .expect("插入 files 行失败");
+
+        assert_eq!(
+            content(&pool, text.id).await.expect("查询失败"),
+            Some(Some(ClipContent::Text("hello".into())))
+        );
+        assert_eq!(
+            content(&pool, image.id).await.expect("查询失败"),
+            Some(Some(ClipContent::Image {
+                path: "images/img-c.png".into()
+            }))
+        );
+        assert_eq!(
+            content(&pool, files_id).await.expect("查询失败"),
+            Some(None)
+        );
+        assert_eq!(content(&pool, 9999).await.expect("查询失败"), None);
+    }
+
+    #[tokio::test]
+    async fn delete_returns_image_paths_only_for_image_rows() {
+        let pool = memory_pool().await;
+        let text = upsert_text(&pool, "plain", &hash_text("plain"))
+            .await
+            .expect("文本入库失败");
+        let image = insert_sample_image(&pool, "img-d").await;
+
+        // 文本行：删除成功但没有文件要清理
+        assert_eq!(
+            delete(&pool, text.id).await.expect("删除失败"),
+            Some(Removed::default())
+        );
+        // 图片行：原图与缩略图路径都要交给服务层清理
+        assert_eq!(
+            delete(&pool, image.id).await.expect("删除失败"),
+            Some(Removed {
+                image_files: vec!["images/img-d.png".into(), "images/img-d.thumb.png".into()]
+            })
+        );
+        // 不存在的条目
+        assert_eq!(delete(&pool, image.id).await.expect("删除失败"), None);
+    }
+
+    #[tokio::test]
+    async fn prune_returns_paths_of_evicted_images_and_spares_favorites() {
+        let pool = memory_pool().await;
+        // 时间从旧到新：old-image(1) < fav-image(2) < text(3) < new-image(4)
+        let old = insert_sample_image(&pool, "img-old").await;
+        let fav = insert_sample_image(&pool, "img-fav").await;
+        upsert_text(&pool, "text", &hash_text("text"))
+            .await
+            .expect("文本入库失败");
+        let new = insert_sample_image(&pool, "img-new").await;
+        for (id, value) in [(old.id, 1), (fav.id, 2), (new.id, 4)] {
+            sqlx::query("UPDATE clipboard_items SET last_used_at = ?1 WHERE id = ?2")
+                .bind(value)
+                .bind(id)
+                .execute(&pool)
+                .await
+                .expect("调整时间失败");
+        }
+        set_last_used(&pool, "text", 3).await;
+        assert!(set_favorite(&pool, fav.id, true).await.expect("收藏失败"));
+
+        // 只保留 1 条非收藏：text 与 old-image 被清理，收藏的 fav-image 幸免
+        let removed = prune(&pool, 1).await.expect("清理失败");
+        assert_eq!(
+            removed.image_files,
+            vec![
+                "images/img-old.png".to_string(),
+                "images/img-old.thumb.png".to_string()
+            ]
+        );
+
+        let remaining = list(&pool, ListFilter::default(), 10, None)
+            .await
+            .expect("查询失败");
+        let ids: Vec<_> = remaining.iter().map(|item| item.id).collect();
+        assert_eq!(ids, vec![new.id, fav.id]);
     }
 }

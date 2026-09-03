@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { isTauriRuntime } from "@/lib/runtime";
 
@@ -9,7 +9,7 @@ export type ClipboardKind = "text" | "image" | "files";
 export interface ClipboardItem {
   /** 主键,操作(粘贴/复制/删除)时回传 */
   id: number;
-  /** 内容类型;当前后端只入库 text,image / files 为预留 */
+  /** 内容类型;后端已入库 text 与 image,files 为预留 */
   kind: ClipboardKind;
   /** [text] 文本预览(最多 5000 字符);原文不出库,粘贴/复制按 id 在后端现取 */
   textPreview: string | null;
@@ -53,6 +53,18 @@ export interface ListClipboardParams {
   limit?: number;
   /** keyset 游标,缺省返回首页 */
   cursor?: ClipboardListCursor;
+}
+
+/**
+ * 把本地绝对路径转成 WebView 可加载的 asset 协议 URL(用于 image 条目的缩略图 / 原图)。
+ * 非 Tauri 运行时或路径为空时返回空串:浏览器预览下 `<img src="">` 只是不显示,不会报错。
+ * 可访问范围由 tauri.conf.json5 的 assetProtocol.scope 管控,前端不做路径校验。
+ */
+export function toAssetUrl(path: string | null): string {
+  if (!isTauriRuntime() || !path) {
+    return "";
+  }
+  return convertFileSrc(path);
 }
 
 /** 分页查询历史(按最近使用倒序,预览形态) */

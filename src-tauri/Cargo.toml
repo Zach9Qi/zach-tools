@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = ["config-json5"] }
 
 [dependencies]
-tauri = { version = "2", features = ["config-json5", "tray-icon"] }
+tauri = { version = "2", features = ["config-json5", "tray-icon", "protocol-asset"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -26,6 +26,8 @@ tauri-plugin-global-shortcut = "2.3.2"
 arboard = "3.6.1"
 thiserror = "2.0.20"
 blake3 = "1.8.7"
+# 剪贴板图片的 PNG 编解码与缩略图；arboard 在 Windows 下已依赖同版本，显式引入零额外编译成本
+image = { version = "0.25.10", default-features = false, features = ["png"] }
 log = "0.4.34"
 tauri-plugin-log = "2.9.1"
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "sqlite", "macros", "migrate", "json"] }

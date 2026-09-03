@@ -1,3 +1,4 @@
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use sqlx::SqlitePool;
@@ -6,6 +7,8 @@ use sqlx::SqlitePool;
 pub struct AppState {
     /// SQLite 连接池
     db: SqlitePool,
+    /// 剪贴板图片落盘目录（启动时已确保存在），只读共享无需加锁
+    image_dir: PathBuf,
     /// 面板唤起前的前台窗口句柄（HWND 按 isize 保存），粘贴时用于还原焦点
     paste_target: Mutex<Option<isize>>,
     /// 即将由本程序写入剪贴板的内容 hash：监听到相同 hash 的事件时跳过入库，避免回环
@@ -13,9 +16,10 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(db: SqlitePool) -> Self {
+    pub fn new(db: SqlitePool, image_dir: PathBuf) -> Self {
         Self {
             db,
+            image_dir,
             paste_target: Mutex::new(None),
             pending_self_write: Mutex::new(None),
         }
@@ -23,6 +27,11 @@ impl AppState {
 
     pub fn db(&self) -> &SqlitePool {
         &self.db
+    }
+
+    /// 剪贴板图片落盘目录
+    pub fn image_dir(&self) -> &Path {
+        &self.image_dir
     }
 
     /// 记录粘贴目标窗口（面板唤起前的前台窗口）

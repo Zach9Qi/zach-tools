@@ -8,8 +8,10 @@ use crate::error::AppError;
 const DB_FILE: &str = "zach-tools.db";
 
 /// 初始化 SQLite 连接池并执行内嵌 migration。
+/// 库文件放 `app_local_data_dir()`（Windows 为 `%LOCALAPPDATA%\<identifier>`）：
+/// 剪贴板历史是机器本地数据，与 WebView2 缓存、日志同根，清理时删一个目录即可；不用 Roaming。
 pub async fn init_pool<R: Runtime>(app: &AppHandle<R>) -> Result<SqlitePool, AppError> {
-    let data_dir = app.path().app_data_dir()?;
+    let data_dir = app.path().app_local_data_dir()?;
     std::fs::create_dir_all(&data_dir)?;
 
     let options = SqliteConnectOptions::new()

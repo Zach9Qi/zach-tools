@@ -5,9 +5,9 @@ use tauri::{AppHandle, Runtime, State};
 
 use crate::error::AppError;
 use crate::services::clipboard_store::{
-    self as store, ClipboardItem, ClipboardKind, ListCursor, ListFilter,
+    self as store, ClipContent, ClipboardItem, ClipboardKind, ListCursor, ListFilter,
 };
-use crate::services::{launcher_window, paste};
+use crate::services::{image_store, launcher_window, paste};
 use crate::state::AppState;
 
 /// 列表默认分页大小
@@ -50,16 +50,16 @@ pub async fn set_clipboard_favorite(
 }
 
 /// 粘贴指定条目：写剪贴板 -> 收起面板 -> 焦点还原到原应用 -> 注入 Ctrl+V。
-/// 目前仅支持文本条目。
+/// 支持文本与图片条目，files 条目报 UnsupportedKind。
 #[tauri::command]
 pub async fn paste_clipboard_item<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,
     id: i64,
 ) -> Result<(), AppError> {
-    let text = get_text_content(&state, id).await?;
+    let content = get_content(&state, id).await?;
 
-    paste::copy_text_to_clipboard(&state, text).await?;
+    paste::copy_to_clipboard(&state, content).await?;
     launcher_window::hide(&app);
     paste::deliver_paste(state.paste_target()).await?;
     store::touch(state.db(), id).await?;
@@ -67,28 +67,29 @@ pub async fn paste_clipboard_item<R: Runtime>(
 }
 
 /// 仅把条目内容复制到系统剪贴板，不执行粘贴（面板保持打开）。
-/// 目前仅支持文本条目。
+/// 支持文本与图片条目，files 条目报 UnsupportedKind。
 #[tauri::command]
 pub async fn copy_clipboard_item(state: State<'_, AppState>, id: i64) -> Result<(), AppError> {
-    let text = get_text_content(&state, id).await?;
+    let content = get_content(&state, id).await?;
 
-    paste::copy_text_to_clipboard(&state, text).await?;
+    paste::copy_to_clipboard(&state, content).await?;
     store::touch(state.db(), id).await?;
     Ok(())
 }
 
-/// 删除一条历史记录。
+/// 删除一条历史记录；image 条目连带删除原图与缩略图文件（尽力而为，失败只记日志）。
 #[tauri::command]
 pub async fn delete_clipboard_item(state: State<'_, AppState>, id: i64) -> Result<(), AppError> {
-    if !store::delete(state.db(), id).await? {
-        return Err(AppError::ItemNotFound);
-    }
+    let removed = store::delete(state.db(), id)
+        .await?
+        .ok_or(AppError::ItemNotFound)?;
+    image_store::remove_files(&removed.image_files);
     Ok(())
 }
 
-/// 取指定条目的文本原文：条目不存在报 ItemNotFound，非文本条目报 UnsupportedKind。
-async fn get_text_content(state: &AppState, id: i64) -> Result<String, AppError> {
-    store::text_content(state.db(), id)
+/// 取指定条目可写回剪贴板的内容：条目不存在报 ItemNotFound，类型不支持报 UnsupportedKind。
+async fn get_content(state: &AppState, id: i64) -> Result<ClipContent, AppError> {
+    store::content(state.db(), id)
         .await?
         .ok_or(AppError::ItemNotFound)?
         .ok_or(AppError::UnsupportedKind)

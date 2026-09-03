@@ -1,21 +1,49 @@
 //! 粘贴编排：写剪贴板（带自写标记）、还原焦点到目标窗口并注入 Ctrl+V。
+//! 文本与图片共用同一套自写标记协议：hash 与采集侧同源，监听到自己写入的事件即可吞掉。
 
+use std::path::Path;
 use std::time::Duration;
+
+use arboard::ImageData;
 
 use crate::error::AppError;
 use crate::platform;
-use crate::services::clipboard_store as store;
+use crate::services::clipboard_store::{self as store, ClipContent};
+use crate::services::image_store;
 use crate::state::AppState;
 
 /// 焦点切换与按键注入之间的等待，给目标窗口留出激活时间
 const FOCUS_SETTLE_DELAY: Duration = Duration::from_millis(50);
 
-/// 把文本写入系统剪贴板，并打上自写标记避免监听回环。
-pub async fn copy_text_to_clipboard(state: &AppState, text: String) -> Result<(), AppError> {
-    state.mark_self_write(store::hash_text(&text));
+/// 把条目内容写入系统剪贴板，并打上自写标记避免监听回环。
+/// 图片先从落盘原图解码 RGBA 再算 hash，文件缺失或损坏返回 [`AppError::ImageFile`]。
+pub async fn copy_to_clipboard(state: &AppState, content: ClipContent) -> Result<(), AppError> {
+    match content {
+        ClipContent::Text(text) => {
+            state.mark_self_write(store::hash_text(&text));
+            write_clipboard(state, move |clipboard| clipboard.set_text(text)).await
+        }
+        ClipContent::Image { path } => {
+            let (image, hash) = tauri::async_runtime::spawn_blocking(move || {
+                let image = image_store::load_rgba(Path::new(&path))?;
+                let hash =
+                    image_store::hash_image(image.width as u32, image.height as u32, &image.bytes);
+                Ok::<(ImageData<'static>, String), AppError>((image, hash))
+            })
+            .await??;
+            state.mark_self_write(hash);
+            write_clipboard(state, move |clipboard| clipboard.set_image(image)).await
+        }
+    }
+}
 
+/// 在阻塞线程里打开剪贴板执行写入；任一环节失败都回滚自写标记，避免误吞下一次真实复制。
+async fn write_clipboard<F>(state: &AppState, write: F) -> Result<(), AppError>
+where
+    F: FnOnce(&mut arboard::Clipboard) -> Result<(), arboard::Error> + Send + 'static,
+{
     let written = tauri::async_runtime::spawn_blocking(move || {
-        arboard::Clipboard::new().and_then(|mut clipboard| clipboard.set_text(text))
+        arboard::Clipboard::new().and_then(|mut clipboard| write(&mut clipboard))
     })
     .await;
 

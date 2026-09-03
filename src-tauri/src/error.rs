@@ -17,6 +17,9 @@ pub enum AppError {
     #[error("暂不支持对该类型条目执行此操作")]
     UnsupportedKind,
 
+    #[error("图片文件读取失败: {0}")]
+    ImageFile(#[from] image::ImageError),
+
     #[error("输入输出错误: {0}")]
     Io(#[from] std::io::Error),
 
