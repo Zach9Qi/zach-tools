@@ -13,7 +13,7 @@
 | 语言 | TypeScript(strict) | 构建即类型门禁:`vue-tsc -b`(顺着 tsconfig references 同时检查浏览器侧与 Node 侧) |
 | 样式 | Tailwind CSS v4(CSS-first 配置) | 无 `tailwind.config.js`,三层 token 在 `src/index.css`,见[设计令牌](./design-tokens.md) |
 | 图标 | unplugin-icons + lucide | `~icons/lucide/xxx` 按需编译成组件 |
-| 构建 | Vite 6 + bun | `bun run dev` / `bun run build` |
+| 构建 | Vite 8 + bun | `bun run dev` / `bun run build` |
 | 状态 | 组合式函数(模块级 ref) | 未引入 Pinia,见[状态管理](./state-management.md) |
 | Lint | oxlint(`.oxlintrc.json`) | 含依赖边界强制;模板规则与 typeAware 的已知缺口见[质量规范](./quality-guidelines.md) |
 | 测试 | Vitest(`vitest.config.ts`) | 纯函数用例与源码同目录(`xxx.test.ts`) |
