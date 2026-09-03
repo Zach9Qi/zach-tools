@@ -34,7 +34,7 @@ const time = computed(() => formatRelativeTime(props.item.lastUsedAt));
 <template>
   <!-- mousedown.prevent:点击条目不把焦点从搜索框抢走;整行点击即粘贴,操作按钮在右栏详情头部 -->
   <div
-    class="flex h-11 shrink-0 cursor-default items-center gap-2.5 rounded-lg px-2.5 transition-colors duration-100 ease-out"
+    class="flex h-11 shrink-0 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 transition-colors duration-100 ease-out"
     :class="selected ? 'bg-accent font-medium shadow-2xs' : 'hover:bg-accent/50'"
     @mousedown.prevent
     @mouseenter="emit('select')"

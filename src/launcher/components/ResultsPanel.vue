@@ -43,7 +43,7 @@ const { isSearch, sections, selectedIndex, select } = useResults({
         <!-- 已固定分区特有的「全部 >」;第一版只占位,不跳转 -->
         <template v-if="section.key === 'pinned'" #action>
           <span
-            class="flex items-center gap-0.5 rounded-sm px-1 text-xs text-muted-foreground/80 transition-colors hover:text-foreground"
+            class="flex cursor-pointer items-center gap-0.5 rounded-sm px-1 text-xs text-muted-foreground/80 transition-colors hover:text-foreground"
           >
             全部
             <IconChevronRight class="size-3" />

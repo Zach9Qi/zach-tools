@@ -89,9 +89,15 @@
   }
 
   /* 不设 background / color:面板圆角外的透明角不能有底色,且 body 无 color-scheme 时 light-dark 只会走浅色支 */
+  /* 基础光标策略:默认 default,按钮及 [role=button] 统一步调为 pointer */
   body {
     cursor: default;
     -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
   }
 
   /* 写 border 不必再带颜色 */
